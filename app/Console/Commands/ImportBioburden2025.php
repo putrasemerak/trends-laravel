@@ -110,6 +110,12 @@ class ImportBioburden2025 extends Command
                         continue;
                     }
 
+                    // Silently skip rows where column B is clearly not a date
+                    // (e.g. summary tables with batch numbers or repeated headers)
+                    if (is_string($dateRaw) && !$this->looksLikeDate($dateRaw)) {
+                        continue;
+                    }
+
                     $datetested = $this->parseDate($dateRaw, $dateCell->getFormattedValue());
 
                     if (!$datetested) {
@@ -240,6 +246,31 @@ class ImportBioburden2025 extends Command
     }
 
     /**
+     * Quick check: does this string look like it could be a date?
+     * Rejects batch numbers, header text, etc.
+     * Accepts: "01-Jan-25", "2025-01-01", "01/01/2025", Excel serials
+     */
+    private function looksLikeDate(string $value): bool
+    {
+        $v = trim($value);
+
+        // Must contain at least one digit
+        if (!preg_match('/\d/', $v)) return false;
+
+        // Typical date patterns: contains -, / or is a month abbreviation
+        if (preg_match('/\d{1,2}[-\/]\w{2,3}[-\/]\d{2,4}/', $v)) return true;
+        if (preg_match('/\d{4}[-\/]\d{2}[-\/]\d{2}/', $v)) return true;
+        if (preg_match('/\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}/', $v)) return true;
+        // "01 MAY 25" or "01 MAY 2025" style
+        if (preg_match('/^\d{1,2}\s+[A-Za-z]{3}\s+\d{2,4}$/', $v)) return true;
+
+        // Reject if it looks like a batch number (letters + digits, 6+ chars, no separators)
+        if (preg_match('/^[A-Z]{1,3}\d{2}[A-Z]\d{3,}/i', $v)) return false;
+
+        return false;
+    }
+
+    /**
      * Parse a date value from Excel.
      * Handles both Excel serial numbers and string formats.
      */
@@ -258,7 +289,7 @@ class ImportBioburden2025 extends Command
         // String date — try formatted value first, then raw
         $candidates = array_filter(array_unique([trim($formatted), trim((string)$raw)]));
 
-        $formats = ['d-M-y', 'd-M-Y', 'd/m/Y', 'd-m-Y', 'Y-m-d', 'j-M-y', 'j-M-Y'];
+        $formats = ['d-M-y', 'd-M-Y', 'd/m/Y', 'd-m-Y', 'Y-m-d', 'j-M-y', 'j-M-Y', 'j M y', 'j M Y', 'd M y', 'd M Y'];
 
         foreach ($candidates as $str) {
             foreach ($formats as $fmt) {
