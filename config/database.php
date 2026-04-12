@@ -127,6 +127,20 @@ return [
             'trust_server_certificate' => true,
         ],
 
+        'devdb' => [
+            'driver' => 'sqlsrv',
+            'host' => env('DB_DEVDB_HOST', 'SDM14'),
+            'port' => env('DB_DEVDB_PORT', '1433'),
+            'database' => env('DB_DEVDB_DATABASE', 'DevDB'),
+            'username' => env('DB_DEVDB_USERNAME', 'sa'),
+            'password' => env('DB_DEVDB_PASSWORD', ''),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'encrypt' => 'yes',
+            'trust_server_certificate' => true,
+        ],
+
     ],
 
     /*
