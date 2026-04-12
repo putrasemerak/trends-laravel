@@ -32,7 +32,7 @@
 <div class="container">
     <div class="row justify-content-md-center">
         <div class="col-md-6 text-center">
-            <form method="get" id="monthRangeForm" action="{{ route('bioburden.index') }}">
+            <form method="get" id="monthRangeForm" action="{{ route('bioburden.index', [], false) }}">
                 <input type="hidden" name="prodline" value="{{ $prodline }}">
                 <table class="table table-sm table-borderless">
                     <tr>
@@ -75,7 +75,7 @@
                             </select>
                         </td>
                         <td><button type="submit" class="btn btn-success btn-block btn-sm">Submit</button></td>
-                        <td><a class="btn btn-primary btn-block btn-sm" href="{{ route('bioburden.index', ['prodline' => $prodline]) }}" role="button">Clear</a></td>
+                        <td><a class="btn btn-primary btn-block btn-sm" href="{{ route('bioburden.index', ['prodline' => $prodline], false) }}" role="button">Clear</a></td>
                     </tr>
                 </table>
             </form>
@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td class="text-center">{{ $row->limit }}</td>
                             <td class="text-center">
                                 @if($accessLevel >= 4)
-                                    <form method="POST" action="{{ route('bioburden.remove') }}" style="display:inline;">
+                                    <form method="POST" action="{{ route('bioburden.remove', [], false) }}" style="display:inline;">
                                         @csrf
                                         <input type="hidden" name="id" value="{{ $row->id }}">
                                         <button type="submit" class="btn btn-danger btn-sm"
@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </button>
             </div>
             <div class="modal-body">
-                <form method="POST" action="{{ route('bioburden.store') }}">
+                <form method="POST" action="{{ route('bioburden.store', [], false) }}">
                     @csrf
                     <input type="hidden" name="prodline" value="{{ $prodline }}">
                     <table class="table table-borderless">
@@ -281,7 +281,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </button>
             </div>
             <div class="modal-body">
-                <form method="POST" action="{{ route('bioburden.upload-csv') }}" enctype="multipart/form-data">
+                <form method="POST" action="{{ route('bioburden.upload-csv', [], false) }}" enctype="multipart/form-data">
                     @csrf
                     <input type="hidden" name="prodline" value="{{ $prodline }}">
                     <div class="form-group">
@@ -312,7 +312,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </button>
             </div>
             <div class="modal-body">
-                <form method="POST" action="{{ route('bioburden.remark.store') }}">
+                <form method="POST" action="{{ route('bioburden.remark.store', [], false) }}">
                     @csrf
                     <label class="font-weight-bold">Remark</label>
                     <textarea class="form-control form-control-sm" name="remark" rows="4" required></textarea>
@@ -340,7 +340,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </button>
             </div>
             <div class="modal-body">
-                <form method="POST" action="{{ route('bioburden.remark.update') }}">
+                <form method="POST" action="{{ route('bioburden.remark.update', [], false) }}">
                     @csrf
                     <label class="font-weight-bold">Remark</label>
                     <textarea class="form-control form-control-sm" name="remark" rows="4" required>{{ $remark->remark ?? '' }}</textarea>

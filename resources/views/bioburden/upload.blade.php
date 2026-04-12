@@ -13,7 +13,7 @@
                 </div>
                 <div class="card-body">
 
-                    <form method="POST" action="{{ route('upload.file') }}" enctype="multipart/form-data" id="uploadForm">
+                    <form method="POST" action="{{ route('upload.file', [], false) }}" enctype="multipart/form-data" id="uploadForm">
                         @csrf
 
                         <!-- Production Line -->

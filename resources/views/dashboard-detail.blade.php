@@ -29,7 +29,7 @@
 
     {{-- Back + Title --}}
     <div class="d-flex align-items-center mb-2" style="gap:10px;">
-        <a href="{{ route('dashboard') }}" class="btn btn-sm btn-outline-secondary">
+        <a href="{{ route('dashboard', [], false) }}" class="btn btn-sm btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> All Products
         </a>
         <h5 class="mb-0"><i class="bi bi-activity"></i> {{ $prodline }}</h5>
@@ -41,7 +41,7 @@
             @foreach($allProdlines as $pl)
                 <li class="nav-item">
                     <a class="nav-link {{ $pl === $prodline ? 'active' : '' }}"
-                       href="{{ route('dashboard.detail', $pl) }}">{{ $pl }}</a>
+                       href="{{ route('dashboard.detail', $pl, false) }}">{{ $pl }}</a>
                 </li>
             @endforeach
         </ul>

@@ -39,7 +39,7 @@
         <div class="row">
             @foreach($prodlines as $pl)
                 <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
-                    <a href="{{ route('dashboard.detail', $pl->prodline) }}" class="text-decoration-none">
+                    <a href="{{ route('dashboard.detail', $pl->prodline, false) }}" class="text-decoration-none">
                         <div class="card prodline-card">
                             <div class="card-header">
                                 <i class="bi bi-activity"></i> {{ $pl->prodline }}

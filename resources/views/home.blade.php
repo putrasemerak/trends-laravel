@@ -31,7 +31,7 @@
                                     $prodline = $queryParams['prodline'] ?? '';
                                 @endphp
                                 <a class="btn btn-primary btn-block btn-sm"
-                                   href="{{ route('bioburden.index', ['prodline' => $prodline]) }}"
+                                   href="{{ route('bioburden.index', ['prodline' => $prodline], false) }}"
                                    role="button">View</a>
                             </td>
                         </tr>

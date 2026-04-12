@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Trending Analysis: Login</title>
-    <script src="{{ asset('assets/theme.js') }}"></script>
-    <link rel="stylesheet" href="{{ asset('assets/login-assets/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/icons/bootstrap-icons.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/theme.css') }}">
+    <script src="/assets/theme.js"></script>
+    <link rel="stylesheet" href="/assets/login-assets/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/assets/theme.css">
     <style>
         body { margin: 0; }
 
@@ -205,7 +205,7 @@
 
 <!-- App Bar -->
 <div class="app-bar">
-    <img src="{{ asset('assets/img/logoain.png') }}" alt="Logo">
+    <img src="/assets/img/logoain.png" alt="Logo">
     <span>AIN MEDICARE SDN. BHD.</span>
 </div>
 
@@ -227,7 +227,7 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('login') }}">
+        <form method="POST" action="{{ route('login', [], false) }}">
             @csrf
 
             <!-- Employee No -->

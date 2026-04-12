@@ -7,33 +7,33 @@
     <title>@yield('title', config('app.name'))</title>
 
     <!-- Theme JS (load early to set data-theme before paint) -->
-    <script src="{{ asset('assets/theme.js') }}"></script>
+    <script src="/assets/theme.js"></script>
 
     <!-- jQuery -->
-    <script src="{{ asset('assets/jquery.min.js') }}"></script>
+    <script src="/assets/jquery.min.js"></script>
 
     <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="{{ asset('assets/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="/assets/bootstrap.min.css">
 
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="{{ asset('assets/icons/bootstrap-icons.css') }}">
+    <link rel="stylesheet" href="/assets/icons/bootstrap-icons.css">
 
     <!-- Theme CSS (AFTER Bootstrap to override) -->
-    <link rel="stylesheet" href="{{ asset('assets/theme.css') }}">
+    <link rel="stylesheet" href="/assets/theme.css">
 
     <!-- Bootstrap JS -->
-    <script src="{{ asset('assets/bootstrap-toggle.min.js') }}"></script>
-    <script src="{{ asset('assets/bootstrap.min.js') }}"></script>
+    <script src="/assets/bootstrap-toggle.min.js"></script>
+    <script src="/assets/bootstrap.min.js"></script>
 
     <!-- DataTables -->
-    <script src="{{ asset('assets/datatables/jquery-3.5.1.js') }}"></script>
-    <script src="{{ asset('assets/datatables/jquery.dataTables.min.js') }}"></script>
-    <script src="{{ asset('assets/datatables/dataTables.buttons.min.js') }}"></script>
-    <script src="{{ asset('assets/datatables/jszip.min.js') }}"></script>
-    <script src="{{ asset('assets/datatables/pdfmake.min.js') }}"></script>
-    <script src="{{ asset('assets/datatables/vfs_fonts.js') }}"></script>
-    <script src="{{ asset('assets/datatables/buttons.html5.min.js') }}"></script>
-    <link rel="stylesheet" href="{{ asset('assets/datatables/jquery.dataTables.min.css') }}">
+    <script src="/assets/datatables/jquery-3.5.1.js"></script>
+    <script src="/assets/datatables/jquery.dataTables.min.js"></script>
+    <script src="/assets/datatables/dataTables.buttons.min.js"></script>
+    <script src="/assets/datatables/jszip.min.js"></script>
+    <script src="/assets/datatables/pdfmake.min.js"></script>
+    <script src="/assets/datatables/vfs_fonts.js"></script>
+    <script src="/assets/datatables/buttons.html5.min.js"></script>
+    <link rel="stylesheet" href="/assets/datatables/jquery.dataTables.min.css">
 
     @stack('styles')
 </head>
@@ -41,7 +41,7 @@
 
     <!-- Navbar -->
     <nav class="navbar fixed-top navbar-expand-md navbar-dark bg-dark">
-        <a class="navbar-brand" href="{{ route('home') }}">
+        <a class="navbar-brand" href="{{ route('home', [], false) }}">
             Hello, {{ auth()->user()->details->display_name ?? auth()->user()->EmpNo }}
         </a>
 
@@ -53,19 +53,19 @@
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav mr-auto">
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+                    <a class="nav-link" href="{{ route('dashboard', [], false) }}"><i class="bi bi-speedometer2"></i> Dashboard</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('home') }}"><i class="bi bi-grid"></i> Programs</a>
+                    <a class="nav-link" href="{{ route('home', [], false) }}"><i class="bi bi-grid"></i> Programs</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('upload.form') }}"><i class="bi bi-cloud-arrow-up"></i> Upload</a>
+                    <a class="nav-link" href="{{ route('upload.form', [], false) }}"><i class="bi bi-cloud-arrow-up"></i> Upload</a>
                 </li>
             </ul>
             <button class="theme-toggle" data-toggle-theme title="Toggle theme">
                 <i class="bi bi-moon-fill theme-icon"></i>
             </button>
-            <form class="form-inline my-2 my-lg-0" method="POST" action="{{ route('logout') }}">
+            <form class="form-inline my-2 my-lg-0" method="POST" action="{{ route('logout', [], false) }}">
                 @csrf
                 <button type="submit" class="btn btn-danger my-2 my-sm-0">Logout</button>
             </form>
