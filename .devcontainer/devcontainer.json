@@ -1,0 +1,47 @@
+{
+    "name": "trends-laravel",
+
+    // Use the official Microsoft PHP 8.3 devcontainer image
+    "image": "mcr.microsoft.com/devcontainers/php:8.3",
+
+    // Install Node.js inside the container
+    "features": {
+        "ghcr.io/devcontainers/features/node:1": {
+            "version": "lts"
+        }
+    },
+
+    // VS Code extensions to auto-install in Codespaces
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "bmewburn.vscode-intelephense-client",
+                "onecentlin.laravel-blade",
+                "amiralizadeh9480.laravel-extra-intellisense",
+                "bradlc.vscode-tailwindcss",
+                "dbaeumer.vscode-eslint",
+                "esbenp.prettier-vscode",
+                "mikestead.dotenv"
+            ],
+            "settings": {
+                "editor.formatOnSave": true,
+                "editor.defaultFormatter": "esbenp.prettier-vscode",
+                "[php]": {
+                    "editor.defaultFormatter": "bmewburn.vscode-intelephense-client"
+                }
+            }
+        }
+    },
+
+    // Run this script once after the container is created
+    "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+    // Forward the port that php artisan serve uses
+    "forwardPorts": [8000],
+    "portsAttributes": {
+        "8000": {
+            "label": "Laravel App",
+            "onAutoForward": "openBrowser"
+        }
+    }
+}
