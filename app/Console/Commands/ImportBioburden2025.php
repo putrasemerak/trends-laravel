@@ -216,6 +216,7 @@ class ImportBioburden2025 extends Command
 
     /**
      * Add the four new BBR columns to TS_0010 if they don't already exist.
+     * Also ensures the unique index on (prodline, batch, runno, datetested).
      */
     private function ensureNewColumns(): void
     {
@@ -233,6 +234,27 @@ class ImportBioburden2025 extends Command
                     "ALTER TABLE TS_0010 ADD [{$col}] INT NULL DEFAULT 0"
                 );
                 $this->info("Added new column to TS_0010: {$col}");
+            }
+        }
+
+        // Add unique index to prevent duplicate rows at DB level
+        $indexName = 'UQ_TS0010_prodline_batch_runno_date';
+        $indexExists = DB::connection('sqlsrv')->selectOne(
+            "SELECT COUNT(*) AS cnt FROM sys.indexes
+             WHERE name = ? AND object_id = OBJECT_ID('TS_0010')",
+            [$indexName]
+        );
+
+        if ($indexExists->cnt == 0) {
+            try {
+                DB::connection('sqlsrv')->statement(
+                    "CREATE UNIQUE INDEX [{$indexName}]
+                     ON TS_0010 (prodline, batch, runno, datetested)"
+                );
+                $this->info("Created unique index on TS_0010 (prodline, batch, runno, datetested)");
+            } catch (\Exception $e) {
+                $this->warn("Could not create unique index (table may have existing duplicates): " . $e->getMessage());
+                $this->warn("The import will still proceed using PHP-level duplicate checks.");
             }
         }
     }
