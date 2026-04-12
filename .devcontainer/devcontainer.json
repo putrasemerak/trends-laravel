@@ -1,8 +1,10 @@
 {
     "name": "trends-laravel",
 
-    // Use the official Microsoft PHP 8.3 devcontainer image
-    "image": "mcr.microsoft.com/devcontainers/php:8.3",
+    // Build from Dockerfile so we can install PHP extensions (e.g. gd)
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
 
     // Install Node.js inside the container
     "features": {

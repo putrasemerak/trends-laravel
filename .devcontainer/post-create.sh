@@ -1,10 +1,6 @@
 #!/bin/bash
 set -e
 
-echo "==> Installing PHP gd extension (required by phpspreadsheet)..."
-sudo apt-get install -y libpng-dev libfreetype6-dev libjpeg62-turbo-dev > /dev/null 2>&1
-docker-php-ext-install gd
-
 echo "==> Installing PHP dependencies..."
 composer install
 
