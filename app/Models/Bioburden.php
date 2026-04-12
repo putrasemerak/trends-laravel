@@ -21,6 +21,10 @@ class Bioburden extends Model
         'tamcr2',
         'tymcr1',
         'tymcr2',
+        'bbr_tamc_r1',
+        'bbr_tamc_r2',
+        'bbr_tymc_r1',
+        'bbr_tymc_r2',
         'resultavg',
         'limit',
         'AddDate',
@@ -30,12 +34,16 @@ class Bioburden extends Model
     ];
 
     protected $casts = [
-        'datetested' => 'date',
-        'tamcr1' => 'integer',
-        'tamcr2' => 'integer',
-        'tymcr1' => 'integer',
-        'tymcr2' => 'integer',
-        'resultavg' => 'float',
+        'datetested'   => 'date',
+        'tamcr1'       => 'integer',
+        'tamcr2'       => 'integer',
+        'tymcr1'       => 'integer',
+        'tymcr2'       => 'integer',
+        'bbr_tamc_r1'  => 'integer',
+        'bbr_tamc_r2'  => 'integer',
+        'bbr_tymc_r1'  => 'integer',
+        'bbr_tymc_r2'  => 'integer',
+        'resultavg'    => 'float',
     ];
 
     /**
