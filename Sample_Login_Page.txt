@@ -1,0 +1,571 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+
+import '../../config/app_constants.dart';
+import '../../config/database_config.dart';
+import '../../services/activity_log_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/database_service.dart';
+import '../../services/keyboard_service.dart';
+import '../../services/local_database_service.dart';
+import '../../widgets/app_scaffold.dart';
+import '../main_menu/main_menu_screen.dart';
+
+/// Login screen — converts frmMain.vb
+///
+/// Flow:
+/// 1. On load: connect to DB, verify date matches server, check app version
+/// 2. User enters EmpNo + Password
+/// 3. Validates access in SY_0055 (ProgID='WH04')
+/// 4. Validates credentials in SY_0050
+/// 5. Logs login to SY_ScanLOG
+/// 6. Navigates to MainMenuScreen
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _empNoController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _empNoFocus = FocusNode();
+  final _passwordFocus = FocusNode();
+  final _db = DatabaseService();
+
+  bool _isLoading = false;
+  String _statusMessage = '';
+  bool _isDemo = false;
+
+  @override
+  void initState() {
+    super.initState();
+    DatabaseConfig.useLive();
+    // Initialize local DB only (no SQL Server connection yet)
+    LocalDatabaseService().initialize();
+    _empNoFocus.addListener(_onFocusChange);
+    _passwordFocus.addListener(_onFocusChange);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _empNoFocus.requestFocus();
+      if (mounted) {
+        context.read<KeyboardService>().addListener(_onKeyboardToggle);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _empNoFocus.removeListener(_onFocusChange);
+    _passwordFocus.removeListener(_onFocusChange);
+    try {
+      context.read<KeyboardService>().removeListener(_onKeyboardToggle);
+    } catch (_) {}
+    _empNoController.dispose();
+    _passwordController.dispose();
+    _empNoFocus.dispose();
+    _passwordFocus.dispose();
+    super.dispose();
+  }
+
+  /// Hide keyboard when a field gains focus in scanner mode.
+  void _onFocusChange() {
+    final kbService = context.read<KeyboardService>();
+    if (!kbService.keyboardEnabled) {
+      // Double-dismiss: obscureText fields re-raise the keyboard after the
+      // first hide, so a second delayed hide catches it.
+      Future.delayed(const Duration(milliseconds: 50), () {
+        SystemChannels.textInput.invokeMethod('TextInput.hide');
+      });
+      Future.delayed(const Duration(milliseconds: 200), () {
+        SystemChannels.textInput.invokeMethod('TextInput.hide');
+      });
+    }
+  }
+
+  /// When toggle is pressed, instantly show/hide keyboard for the focused field.
+  void _onKeyboardToggle() {
+    if (!mounted) return;
+    final kbService = context.read<KeyboardService>();
+    final activeFocus = _empNoFocus.hasFocus
+        ? _empNoFocus
+        : (_passwordFocus.hasFocus ? _passwordFocus : null);
+    if (activeFocus == null) return;
+
+    if (kbService.keyboardEnabled) {
+      activeFocus.unfocus();
+      Future.delayed(const Duration(milliseconds: 50), () {
+        if (mounted) activeFocus.requestFocus();
+      });
+    } else {
+      SystemChannels.textInput.invokeMethod('TextInput.hide');
+    }
+    if (mounted) setState(() {});
+  }
+
+  /// Switches database profile (connection deferred to login tap).
+  Future<void> _switchDatabase(bool demo) async {
+    if (demo) {
+      DatabaseConfig.useDemo();
+    } else {
+      DatabaseConfig.useLive();
+    }
+    // Disconnect so next login uses new config
+    try {
+      await _db.disconnect();
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() {
+      _isDemo = demo;
+    });
+  }
+
+  /// Connects to DB, checks date/version, validates credentials.
+  Future<void> _login() async {
+    final empNo = _empNoController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (empNo.isEmpty || password.isEmpty) {
+      _showError('Sila masukkan EmpNo dan Password');
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _statusMessage = 'Logging in...';
+    });
+
+    try {
+      // Connect to SQL Server
+      if (!mounted) return;
+      setState(() => _statusMessage = 'Connecting to database...');
+      if (!_db.isConnected) {
+        await _db.connect();
+      }
+
+      // Check server date
+      if (!mounted) return;
+      setState(() => _statusMessage = 'Checking server date...');
+      final dateRows = await _db.query('SELECT GetDate() AS CurrentDate');
+      if (dateRows.isNotEmpty) {
+        final serverDate = DateTime.parse(dateRows.first['CurrentDate'].toString());
+        final deviceDate = DateTime.now();
+        if (serverDate.year != deviceDate.year ||
+            serverDate.month != deviceDate.month ||
+            serverDate.day != deviceDate.day) {
+          _showError('Tarikh pengimbas tak sama dengan server! Sila betulkan terlebih dahulu.');
+          return;
+        }
+      }
+
+      // Check app version in SY_0040
+      if (!mounted) return;
+      setState(() => _statusMessage = 'Checking version...');
+      final versionRows = await _db.query(
+        "SELECT * FROM SY_0040 WHERE KeyCD1=@KeyCD1 AND KeyCD2=@KeyCD2",
+        {'@KeyCD1': 600, '@KeyCD2': '1'},
+      );
+      if (versionRows.isNotEmpty) {
+        final serverVersion = (versionRows.first['LOCKBY'] ?? '').toString().trim();
+        if (serverVersion != AppConstants.appVersion) {
+          _showError('Versi bukan yang terkini. Sila hubungi pihak IFT-SDM');
+          return;
+        }
+      }
+
+      // Check access in SY_0055
+      if (!mounted) return;
+      setState(() => _statusMessage = 'Validating access...');
+      final accessRows = await _db.query(
+        "SELECT ALevel FROM SY_0055 WHERE EmpNo=@EmpNo AND ProgID=@ProgID",
+        {'@EmpNo': empNo, '@ProgID': AppConstants.programId},
+      );
+      if (accessRows.isEmpty) {
+        _showError('Capaian tidak dibenarkan!');
+        return;
+      }
+      final accessLevel = (accessRows.first['ALevel'] ?? '').toString();
+      final aLevel = accessLevel.length >= 2 ? accessLevel.substring(0, 2) : accessLevel;
+
+      // Validate credentials in SY_0050
+      final loginRows = await _db.query(
+        "SELECT EmpNo, Pass, EmpName FROM SY_0050 WHERE EmpNo=@EmpNo",
+        {'@EmpNo': empNo},
+      );
+      if (loginRows.isEmpty) {
+        _showError('Invalid Employee');
+        return;
+      }
+
+      final dbPassword = (loginRows.first['Pass'] ?? '').toString().trim();
+      final empName = (loginRows.first['EmpName'] ?? '').toString().trim();
+
+      if (password != dbPassword) {
+        _showError('Access denied');
+        _passwordController.clear();
+        _passwordFocus.requestFocus();
+        return;
+      }
+
+      // Set auth state
+      if (!mounted) return;
+      final authService = Provider.of<AuthService>(context, listen: false);
+      authService.setUser(empNo.trim(), empName, aLevel);
+
+      // Log login to SY_ScanLOG
+      // Use the same loginTime string stored in authService so logout can match it
+      final loginTime = authService.loginTime.toString();
+      final scannerName = 'Flutter_App';
+
+      try {
+        final logRows = await _db.query(
+          "SELECT * FROM SY_ScanLOG WHERE LogInTime=@LogInTime AND ScannerName=@ScannerName",
+          {'@LogInTime': loginTime, '@ScannerName': scannerName},
+        );
+        if (logRows.isEmpty) {
+          await _db.execute(
+            "INSERT INTO SY_ScanLOG (LogInTime, ScannerName, EmpNo, EmpName, LogInDate) "
+            "VALUES (@LogInTime, @ScannerName, @EmpNo, @EmpName, @LogInDate)",
+            {
+              '@LogInTime': loginTime,
+              '@ScannerName': scannerName,
+              '@EmpNo': empNo.trim(),
+              '@EmpName': empName,
+              '@LogInDate': DateTime.now().toIso8601String().substring(0, 10),
+            },
+          );
+        }
+      } catch (_) {
+        // Non-critical: don't block login if logging fails
+      }
+
+      // Log successful login
+      await ActivityLogService.log(
+        action: 'LOGIN',
+        empNo: empNo.trim(),
+        detail: 'EmpName: $empName',
+      );
+
+      // Navigate to main menu
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const MainMenuScreen()),
+      );
+    } catch (e) {
+      await ActivityLogService.logError(
+        action: 'LOGIN',
+        empNo: _empNoController.text.trim(),
+        errorMsg: e.toString(),
+      );
+      _showError('Error: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _statusMessage = '';
+        });
+      }
+    }
+  }
+
+  Future<void> _confirmExit() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Exit'),
+        content: const Text('Are you sure you want to exit?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      SystemNavigator.pop();
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      _statusMessage = '';
+    });
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return AppScaffold(
+      title: 'AIN MEDICARE SDN. BHD.',
+      showBackButton: false,
+      showDateTime: false,
+      showKeyboardToggle: true,
+      titleWidget: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Image.asset(
+            'assets/ain_logo.png',
+            height: 28,
+            errorBuilder: (_, _, _) => Icon(
+              Icons.local_hospital,
+              size: 24,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'AIN MEDICARE SDN. BHD.',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 4),
+            // App title + version
+            Text(
+              'AINSystem: Scanning Program',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            Text(
+              'Version - ${AppConstants.appVersion}  |  ${DatabaseConfig.serverHost} / ${DatabaseConfig.databaseName}',
+              style: TextStyle(fontSize: 10, color: cs.onSurface.withValues(alpha: 0.5)),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            // Date/time row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.access_time, size: 14, color: cs.onSurface.withValues(alpha: 0.5)),
+                const SizedBox(width: 4),
+                StreamBuilder(
+                  stream: Stream.periodic(const Duration(seconds: 1)),
+                  builder: (context, _) {
+                    final now = DateTime.now();
+                    final formatted = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
+                    return Text(
+                      formatted,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    );
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Employee No
+            TextField(
+              controller: _empNoController,
+              focusNode: _empNoFocus,
+              decoration: const InputDecoration(
+                labelText: 'Employee No',
+                prefixIcon: Icon(Icons.person),
+              ),
+              keyboardType: context.watch<KeyboardService>().keyboardEnabled
+                  ? TextInputType.number
+                  : TextInputType.none,
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => _passwordFocus.requestFocus(),
+            ),
+            const SizedBox(height: 10),
+
+            // Password
+            TextField(
+              controller: _passwordController,
+              focusNode: _passwordFocus,
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                prefixIcon: Icon(Icons.lock),
+              ),
+              keyboardType: context.watch<KeyboardService>().keyboardEnabled
+                  ? TextInputType.text
+                  : TextInputType.none,
+              obscureText: true,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _login(),
+            ),
+            const SizedBox(height: 10),
+
+            // Database toggle: Live / Demo
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: _isDemo
+                    ? Colors.orange.withValues(alpha: 0.08)
+                    : cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: _isDemo
+                      ? Colors.orange.withValues(alpha: 0.4)
+                      : cs.outline.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'LIVE',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: !_isDemo ? Colors.green : cs.onSurface.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 28,
+                    child: Switch(
+                      value: _isDemo,
+                      onChanged: _isLoading ? null : _switchDatabase,
+                      activeThumbColor: Colors.orange,
+                      inactiveThumbColor: Colors.green,
+                      inactiveTrackColor: Colors.green.withValues(alpha: 0.3),
+                      activeTrackColor: Colors.orange.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'DEMO',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: _isDemo ? Colors.orange : cs.onSurface.withValues(alpha: 0.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Login button
+            ElevatedButton(
+              onPressed: _isLoading ? null : _login,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 44),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0xFF9E9E9E)
+                        : const Color(0xFF212121),
+                    width: 1.5,
+                  ),
+                ),
+              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'LOGIN',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+            ),
+            const SizedBox(height: 8),
+
+            // Exit button
+            ElevatedButton(
+              onPressed: _isLoading ? null : _confirmExit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 44),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0xFF9E9E9E)
+                        : const Color(0xFF212121),
+                    width: 1.5,
+                  ),
+                ),
+              ),
+              child: const Text(
+                'EXIT',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // Status
+            if (_statusMessage.isNotEmpty)
+              Text(
+                _statusMessage,
+                style: TextStyle(
+                  color: _statusMessage.contains('Error')
+                      ? Colors.red.shade300
+                      : cs.onSurface.withValues(alpha: 0.6),
+                  fontSize: 12,
+                ),
+                textAlign: TextAlign.center,
+              ),
+
+            const Spacer(),
+
+            // Developer info
+            Text(
+              'Developed By:\nInformation Technology Division\nSystem Development Department',
+              style: TextStyle(
+                fontSize: 10,
+                color: cs.onSurface.withValues(alpha: 0.4),
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '\u00A9 ${DateTime.now().year} Ain Medicare Sdn. Bhd. All rights reserved.',
+              style: TextStyle(
+                fontSize: 9,
+                color: cs.onSurface.withValues(alpha: 0.3),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
