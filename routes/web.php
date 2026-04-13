@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BioburdenController;
+use App\Http\Controllers\BioburdenUploadController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Middleware\CheckProgramAccess;
@@ -31,9 +32,13 @@ Route::middleware(['auth', CheckProgramAccess::class])->group(function () {
     Route::post('/bioburden/store', [BioburdenController::class, 'store'])->name('bioburden.store');
     Route::post('/bioburden/remove', [BioburdenController::class, 'remove'])->name('bioburden.remove');
 
-    // Upload result data
+    // Upload result data (original — CSV format)
     Route::get('/upload', [BioburdenController::class, 'uploadForm'])->name('upload.form');
     Route::post('/upload', [BioburdenController::class, 'uploadFile'])->name('upload.file');
+
+    // Smart upload — accepts original monitoring Excel files as-is
+    Route::get('/smart-upload', [BioburdenUploadController::class, 'showForm'])->name('bioburden.smart-upload');
+    Route::post('/smart-upload', [BioburdenUploadController::class, 'upload'])->name('bioburden.smart-upload.post');
 
     // Monthly remarks
     Route::post('/bioburden/remark', [BioburdenController::class, 'storeRemark'])->name('bioburden.remark.store');
