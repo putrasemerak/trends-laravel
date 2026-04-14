@@ -39,10 +39,26 @@
 </head>
 <body>
 
+    <!-- Greeting Bar -->
+    <div id="greetingBar">
+        <span>
+            <i class="bi bi-person-fill"></i>
+            {{ __('app.greeting') }}, <strong>{{ auth()->user()->details->display_name ?? auth()->user()->EmpNo }}</strong>
+        </span>
+        <span style="display:flex;align-items:center;gap:12px;">
+            <span><i class="bi bi-calendar3"></i> {{ now()->format('l, d M Y') }}</span>
+            <span class="lang-toggle-bar">
+                <a href="{{ route('lang.switch', 'ms') }}" class="{{ app()->getLocale() === 'ms' ? 'active' : '' }}">BM</a>
+                <span>|</span>
+                <a href="{{ route('lang.switch', 'en') }}" class="{{ app()->getLocale() === 'en' ? 'active' : '' }}">EN</a>
+            </span>
+        </span>
+    </div>
+
     <!-- Navbar -->
     <nav class="navbar fixed-top navbar-expand-md navbar-dark bg-dark">
-        <a class="navbar-brand" href="{{ route('home', [], false) }}">
-            Hello, {{ auth()->user()->details->display_name ?? auth()->user()->EmpNo }}
+        <a class="navbar-brand" href="{{ route('dashboard', [], false) }}">
+            <i class="bi bi-activity"></i> Trending Analysis
         </a>
 
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
@@ -53,13 +69,11 @@
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav mr-auto">
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('dashboard', [], false) }}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+                    <a class="nav-link" href="{{ route('dashboard', [], false) }}"><i class="bi bi-speedometer2"></i> {{ __('app.nav_dashboard') }}</a>
                 </li>
+                {{-- Programs menu hidden (route kept) --}}
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('home', [], false) }}"><i class="bi bi-grid"></i> Programs</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('bioburden.smart-upload', [], false) }}"><i class="bi bi-cloud-arrow-up"></i> Upload</a>
+                    <a class="nav-link" href="{{ route('bioburden.smart-upload', [], false) }}"><i class="bi bi-cloud-arrow-up"></i> {{ __('app.nav_upload') }}</a>
                 </li>
             </ul>
             <button class="theme-toggle" data-toggle-theme title="Toggle theme">
@@ -67,15 +81,15 @@
             </button>
             <form class="form-inline my-2 my-lg-0" method="POST" action="{{ route('logout', [], false) }}">
                 @csrf
-                <button type="submit" class="btn btn-danger my-2 my-sm-0">Logout</button>
+                <button type="submit" class="btn btn-danger my-2 my-sm-0">{{ __('app.nav_logout') }}</button>
             </form>
         </div>
     </nav>
 
-    <div style="height:50px;"></div>
+    <div style="height:78px;"></div>
 
     <!-- Toast Notifications (desktop-style) -->
-    <div id="toastContainer" style="position:fixed; top:60px; right:16px; z-index:9999; width:340px;"></div>
+    <div id="toastContainer" style="position:fixed; top:88px; right:16px; z-index:9999; width:340px;"></div>
 
     @if(session('success') || session('error') || session('warning') || $errors->any())
     @php

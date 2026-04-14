@@ -13,6 +13,14 @@ Route::get('/', function () {
     return redirect()->route('login');
 })->name('welcome');
 
+// Locale switch (works before and after login)
+Route::get('/lang/{locale}', function ($locale) {
+    if (in_array($locale, ['en', 'ms'])) {
+        session(['locale' => $locale]);
+    }
+    return redirect()->back();
+})->name('lang.switch');
+
 // Auth routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);

@@ -4,37 +4,18 @@
 
 @push('styles')
 <style>
-.prodline-card {
-    cursor: pointer;
-    transition: transform .15s, box-shadow .15s;
-    border-radius: 8px;
-    overflow: hidden;
-}
-.prodline-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(0,0,0,.12);
-}
-[data-theme="dark"] .prodline-card:hover {
-    box-shadow: 0 6px 20px rgba(0,0,0,.4);
-}
-.prodline-card .card-header {
-    font-size: 13px;
-    font-weight: 700;
-    padding: 8px 12px;
-}
 .prodline-card .card-body { padding: 8px 12px 4px; }
 .prodline-card .spark-chart { width: 100%; height: 100px; }
-.prodline-stats { font-size: 10px; color: var(--text-muted); display: flex; justify-content: space-between; padding: 4px 0 2px; }
-.prodline-stats .val { font-weight: 700; }
+.spark-no-data { width:100%; height:100px; display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--text-muted); opacity:.6; letter-spacing:.03em; }
 </style>
 @endpush
 
 @section('content')
 <div class="container-fluid px-4">
-    <h5 class="mb-3"><i class="bi bi-speedometer2"></i> Dashboard — Bioburden Trending Overview</h5>
+    <h5 class="mb-3"><i class="bi bi-speedometer2"></i> {{ __('app.dash_title') }}</h5>
 
     @if($prodlines->isEmpty())
-        <div class="alert alert-info">No data available yet. Upload test results to get started.</div>
+        <div class="alert alert-info">{{ __('app.dash_no_data') }}</div>
     @else
         <div class="row">
             @foreach($prodlines as $pl)
@@ -47,9 +28,9 @@
                             <div class="card-body">
                                 <div class="spark-chart" id="spark_{{ Str::slug($pl->prodline) }}"></div>
                                 <div class="prodline-stats">
-                                    <span>Samples: <span class="val">{{ $pl->total_samples }}</span></span>
-                                    <span>Avg: <span class="val {{ round($pl->avg_result,1) >= $specLimit ? 'text-danger' : 'text-success' }}">{{ round($pl->avg_result, 2) }}</span></span>
-                                    <span>Max: <span class="val {{ $pl->max_result >= $specLimit ? 'text-danger' : '' }}">{{ $pl->max_result }}</span></span>
+                                    <span>{{ __('app.dash_samples') }}: <span class="val">{{ $pl->total_samples }}</span></span>
+                                    <span>{{ __('app.dash_avg') }}: <span class="val {{ round($pl->avg_result,1) >= $specLimit ? 'text-danger' : 'text-success' }}">{{ round($pl->avg_result, 2) }}</span></span>
+                                    <span>{{ __('app.dash_max') }}: <span class="val {{ $pl->max_result >= $specLimit ? 'text-danger' : '' }}">{{ $pl->max_result }}</span></span>
                                 </div>
                             </div>
                         </div>
@@ -74,7 +55,7 @@ am4core.ready(function() {
     am4core.useTheme(am4themes_animated);
 
     var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    var textColor = isDark ? '#dee2e6' : '#666';
+    var textColor = isDark ? '#9ca3af' : '#666';
     var gridColor = isDark ? '#3a3f47' : '#eee';
     var specLimit = JSON.parse(document.getElementById('__specLimit').textContent);
     var sparklines = JSON.parse(document.getElementById('__sparklines').textContent);
@@ -84,7 +65,11 @@ am4core.ready(function() {
     Object.keys(sparklines).forEach(function(prodline) {
         var divId = 'spark_' + slugify(prodline);
         var el = document.getElementById(divId);
-        if (!el || !sparklines[prodline].length) return;
+        if (!el) return;
+        if (!sparklines[prodline] || !sparklines[prodline].length) {
+            el.innerHTML = '<div class="spark-no-data"><i class="bi bi-graph-up me-1"></i> No chart data</div>';
+            return;
+        }
 
         var chart = am4core.create(divId, am4charts.XYChart);
         chart.data = sparklines[prodline];
@@ -111,15 +96,15 @@ am4core.ready(function() {
         var series = chart.series.push(new am4charts.LineSeries());
         series.dataFields.valueY = 'avg';
         series.dataFields.categoryX = 'month';
-        series.strokeWidth = 2;
+        series.strokeWidth = 1.5;
         series.stroke = am4core.color('#3b82f6');
-        series.fill = am4core.color('#3b82f6');
-        series.fillOpacity = 0.08;
+        series.fill   = am4core.color('#3b82f6');
+        series.fillOpacity = 0.07;
         series.tensionX = 0.8;
         series.tooltipText = '{month}: {avg} CFU';
 
         var bullet = series.bullets.push(new am4charts.CircleBullet());
-        bullet.circle.radius = 3;
+        bullet.circle.radius = 2;
         bullet.circle.fill = am4core.color('#3b82f6');
         bullet.circle.strokeWidth = 0;
 

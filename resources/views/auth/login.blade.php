@@ -252,17 +252,24 @@
 
         <form method="POST" action="{{ route('login', [], false) }}">
             @csrf
+            @php $loc = app()->getLocale(); @endphp
+
+            <!-- Language toggle -->
+            <div style="display:flex;justify-content:flex-end;margin-bottom:10px;gap:6px;font-size:11px;font-weight:700;letter-spacing:.04em;">
+                <a href="{{ route('lang.switch', 'ms') }}" class="lang-btn {{ $loc==='ms' ? 'lang-btn-active' : '' }}">BM</a>
+                <a href="{{ route('lang.switch', 'en') }}" class="lang-btn {{ $loc==='en' ? 'lang-btn-active' : '' }}">EN</a>
+            </div>
 
             <!-- Employee No -->
             <div class="input-icon-group">
                 <i class="bi bi-person-fill"></i>
-                <input type="text" name="username" value="{{ old('username') }}" placeholder="Employee No" required autofocus>
+                <input type="text" name="username" value="{{ old('username') }}" placeholder="{{ __('app.login_username') }}" required autofocus>
             </div>
 
             <!-- Password -->
             <div class="input-icon-group">
                 <i class="bi bi-lock-fill"></i>
-                <input type="password" name="password" placeholder="Password" required>
+                <input type="password" name="password" placeholder="{{ __('app.login_password') }}" required>
             </div>
             <div class="cred-hint">
                 <i class="bi bi-info-circle"></i>

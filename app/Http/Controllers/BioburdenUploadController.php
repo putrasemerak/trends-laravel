@@ -41,6 +41,8 @@ class BioburdenUploadController extends Controller
      */
     public function preview(Request $request)
     {
+        set_time_limit(60);
+
         $request->validate([
             'upload_file' => 'required|file|mimes:xlsx,xls|max:10240',
         ]);
@@ -126,6 +128,8 @@ class BioburdenUploadController extends Controller
 
     public function upload(Request $request)
     {
+        set_time_limit(60);
+
         $request->validate([
             'upload_file' => 'required|file|mimes:xlsx,xls|max:10240',
         ]);
@@ -306,13 +310,17 @@ class BioburdenUploadController extends Controller
         }
 
         // Map simple columns from header row AND sub-header rows (some sheets put FILLING/RUN in row below)
+        // Also include r1Row itself — some sheets place "Product name" on the same row as R1/R2 labels
         $scanRows = [$headerRow];
         if ($r1Row) {
-            for ($r = $headerRow + 1; $r < $r1Row; $r++) $scanRows[] = $r;
+            for ($r = $headerRow + 1; $r <= $r1Row; $r++) $scanRows[] = $r;
         }
         foreach ($scanRows as $scanRow) {
             for ($c = 1; $c <= 20; $c++) {
-                $h = strtolower(trim((string)$sheet->getCell([$c, $scanRow])->getValue()));
+                // Use getCalculatedValue() so formula-based headers are read correctly;
+                // also normalize internal whitespace (handles "wrap text" newlines in cells)
+                $raw = (string)$sheet->getCell([$c, $scanRow])->getCalculatedValue();
+                $h   = strtolower(trim(preg_replace('/\s+/', ' ', $raw)));
                 if ($h === '') continue;
                 if (str_contains($h, 'date'))    $layout['col_date']     = $layout['col_date']     ?? $c;
                 if (str_contains($h, 'product')) $layout['col_prodname'] = $layout['col_prodname'] ?? $c;
@@ -322,6 +330,22 @@ class BioburdenUploadController extends Controller
                 if ($h === 'limit')              $layout['col_limit']    = $layout['col_limit']    ?? $c;
                 if (str_contains($h, 'remark'))  $layout['col_remark']   = $layout['col_remark']   ?? $c;
                 if (str_contains($h, 'filling') || str_contains($h, 'filing')) $layout['col_filing'] = $layout['col_filing'] ?? $c;
+            }
+        }
+
+        // Last-resort fallback: if col_prodname still not found, sweep ALL rows 1-20
+        // This catches cases where the label is in a merged cell above/below the detected header row,
+        // or in a row with AutoFilter that was skipped (e.g. "Product name" vs "Product Name")
+        if (empty($layout['col_prodname'])) {
+            for ($r = 1; $r <= $highestRow; $r++) {
+                for ($c = 1; $c <= 20; $c++) {
+                    $raw = (string)$sheet->getCell([$c, $r])->getCalculatedValue();
+                    $h   = strtolower(trim(preg_replace('/\s+/', ' ', $raw)));
+                    if (str_contains($h, 'product') || $h === 'item' || str_contains($h, 'item name')) {
+                        $layout['col_prodname'] = $c;
+                        break 2;
+                    }
+                }
             }
         }
 
@@ -439,6 +463,7 @@ class BioburdenUploadController extends Controller
             if ($exists) {
                 $skippedDupe++;
                 $dupeList[] = [
+                    'prodname'   => $prodname,
                     'batch'      => $batch,
                     'filing'     => $filing,
                     'runno'      => $runno,

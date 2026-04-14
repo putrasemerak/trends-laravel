@@ -4,8 +4,6 @@
 
 @push('styles')
 <style>
-#monthlyChart { width: 100%; height: 280px; }
-#batchChart   { width: 100%; height: 260px; }
 .tab-pills .nav-link {
     font-size: 11px;
     padding: 4px 10px;
@@ -15,12 +13,21 @@
     color: var(--text-body);
     border: 1px solid var(--border-color);
     background: var(--bg-card);
+    transition: color .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.tab-pills .nav-link:hover {
+    color: #60a5fa;
+    border-color: #60a5fa;
+    box-shadow: 0 0 8px rgba(96,165,250,.55), 0 0 2px rgba(96,165,250,.8);
+    text-decoration: none;
 }
 .tab-pills .nav-link.active {
     background: #3b82f6;
     color: #fff;
     border-color: #3b82f6;
+    box-shadow: 0 0 10px rgba(59,130,246,.6);
 }
+#cfuMonthChart { width: 100%; height: 320px; }
 </style>
 @endpush
 
@@ -30,7 +37,7 @@
     {{-- Back + Title --}}
     <div class="d-flex align-items-center mb-2" style="gap:10px;">
         <a href="{{ route('dashboard', [], false) }}" class="btn btn-sm btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> All Products
+            <i class="bi bi-arrow-left"></i> {{ __('app.detail_all') }}
         </a>
         <h5 class="mb-0"><i class="bi bi-activity"></i> {{ $prodline }}</h5>
     </div>
@@ -52,19 +59,19 @@
         <div class="col-md-3 mb-2">
             <div class="stat-card">
                 <div class="stat-number text-primary">{{ number_format($stats->total_samples) }}</div>
-                <div class="stat-label">Total Samples</div>
+                <div class="stat-label">{{ __('app.detail_total') }}</div>
             </div>
         </div>
         <div class="col-md-3 mb-2">
             <div class="stat-card">
                 <div class="stat-number text-success">{{ round($stats->avg_result, 2) }}</div>
-                <div class="stat-label">Average CFU</div>
+                <div class="stat-label">{{ __('app.detail_avg') }}</div>
             </div>
         </div>
         <div class="col-md-3 mb-2">
             <div class="stat-card">
                 <div class="stat-number {{ $stats->max_result >= $specLimit ? 'text-danger' : '' }}">{{ $stats->max_result }}</div>
-                <div class="stat-label">Max CFU</div>
+                <div class="stat-label">{{ __('app.detail_max') }}</div>
             </div>
         </div>
         <div class="col-md-3 mb-2">
@@ -72,23 +79,39 @@
                 <div class="stat-number text-info" style="font-size:1.1rem;">
                     {{ $stats->latest_test ? \Carbon\Carbon::parse($stats->latest_test)->format('d-M-Y') : '-' }}
                 </div>
-                <div class="stat-label">Latest Test</div>
+                <div class="stat-label">{{ __('app.detail_latest') }}</div>
             </div>
         </div>
     </div>
 
-    {{-- Charts --}}
+    {{-- CFU/mL vs Batch by Month chart --}}
     <div class="row mb-3">
-        <div class="col-lg-6 mb-3">
+        <div class="col-12">
             <div class="card">
-                <div class="card-header"><strong><i class="bi bi-graph-up"></i> Monthly Trend (12 Months)</strong></div>
-                <div class="card-body"><div id="monthlyChart"></div></div>
-            </div>
-        </div>
-        <div class="col-lg-6 mb-3">
-            <div class="card">
-                <div class="card-header"><strong><i class="bi bi-bar-chart"></i> Batch Results (Last 60 Days)</strong></div>
-                <div class="card-body"><div id="batchChart"></div></div>
+                <div class="card-header d-flex align-items-center justify-content-between flex-wrap" style="gap:8px;">
+                    <strong><i class="bi bi-graph-up-arrow"></i> CFU/mL vs Batch Number</strong>
+                    <form method="GET" action="{{ route('dashboard.detail', $prodline, false) }}" class="d-flex align-items-center" style="gap:6px;">
+                        <label for="monthSelect" class="mb-0" style="font-size:12px;font-weight:600;">Month:</label>
+                        <select id="monthSelect" name="month" class="form-control form-control-sm" style="width:auto;" onchange="this.form.submit()">
+                            @foreach($availableMonths as $m)
+                                <option value="{{ $m }}" {{ $m === $selectedMonth ? 'selected' : '' }}>{{ $m }}</option>
+                            @endforeach
+                        </select>
+                    </form>
+                </div>
+                <div class="card-body">
+                    @if($cfuMonthData->isEmpty())
+                        <div class="text-muted text-center py-4" style="font-size:13px;">No data for {{ $selectedMonth }}</div>
+                    @else
+                        <div id="cfuMonthChart"></div>
+                        <p class="text-muted mt-1 mb-0" style="font-size:10px;">
+                            <span class="text-danger">&#9679;</span> At/above spec limit &nbsp;
+                            <span class="text-success">&#9679;</span> Within limit &nbsp;|&nbsp;
+                            Dashed red line = Spec Limit ({{ $specLimit }} CFU/mL) &nbsp;|&nbsp;
+                            Hover for details
+                        </p>
+                    @endif
+                </div>
             </div>
         </div>
     </div>
@@ -97,21 +120,21 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
-                <div class="card-header"><strong><i class="bi bi-clock-history"></i> Recent Entries</strong></div>
+                <div class="card-header"><strong><i class="bi bi-clock-history"></i> {{ __('app.detail_recent') }}</strong></div>
                 <div class="card-body">
                     <table class="table table-sm table-striped table-hover">
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Product</th>
-                                <th>Batch</th>
-                                <th class="text-center">Run</th>
+                                <th>{{ __('app.col_date') }}</th>
+                                <th>{{ __('app.col_product') }}</th>
+                                <th>{{ __('app.col_batch') }}</th>
+                                <th class="text-center">{{ __('app.col_run') }}</th>
                                 <th class="text-center">TAMC R1</th>
                                 <th class="text-center">TAMC R2</th>
                                 <th class="text-center">TYMC R1</th>
                                 <th class="text-center">TYMC R2</th>
-                                <th class="text-center">Avg</th>
-                                <th>Added By</th>
+                                <th class="text-center">{{ __('app.col_avg') }}</th>
+                                <th>{{ __('app.col_added_by') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -143,116 +166,98 @@
 @endsection
 
 @push('scripts')
-<script type="application/json" id="__monthlyData">@json($monthlyChartData)</script>
-<script type="application/json" id="__batchData">@json($batchData)</script>
+<script type="application/json" id="__cfuMonthData">@json($cfuMonthData)</script>
 <script type="application/json" id="__specLimit">{{ $specLimit }}</script>
 
 <script src="https://cdn.amcharts.com/lib/4/core.js"></script>
 <script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
-<script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
 
 <script>
-am4core.ready(function() {
-    am4core.useTheme(am4themes_animated);
+document.addEventListener('DOMContentLoaded', function() {
+    var el = document.getElementById('cfuMonthChart');
+    if (!el) return;
 
-    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    var textColor = isDark ? '#dee2e6' : '#212529';
-    var gridColor = isDark ? '#3a3f47' : '#e0e0e0';
+    // Fixed dark-panel chart colours — high contrast on both themes
+    var bgChart   = '#2d3748';   // slate dark: blends in dark mode, intentional panel in light
+    var textColor = '#f1f5f9';   // near-white — readable on dark bg
+    var gridColor = '#4a5568';   // medium slate grid
     var specLimit = JSON.parse(document.getElementById('__specLimit').textContent);
+    var data      = JSON.parse(document.getElementById('__cfuMonthData').textContent);
 
-    // ========== Monthly Trend ==========
-    var chart1 = am4core.create('monthlyChart', am4charts.XYChart);
-    chart1.data = JSON.parse(document.getElementById('__monthlyData').textContent);
+    var chart = am4core.create('cfuMonthChart', am4charts.XYChart);
+    chart.data = data;
+    chart.background.fill = am4core.color(bgChart);
+    chart.background.fillOpacity = 1;
+    chart.plotContainer.background.fillOpacity = 0;
 
-    var catAxis1 = chart1.xAxes.push(new am4charts.CategoryAxis());
-    catAxis1.dataFields.category = 'month';
-    catAxis1.renderer.grid.template.location = 0;
-    catAxis1.renderer.labels.template.rotation = 45;
-    catAxis1.renderer.labels.template.horizontalCenter = 'right';
-    catAxis1.renderer.minGridDistance = 30;
-    catAxis1.renderer.labels.template.fill = am4core.color(textColor);
-    catAxis1.renderer.grid.template.stroke = am4core.color(gridColor);
+    // X axis — Batch Number
+    var catAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    catAxis.dataFields.category = 'batch';
+    catAxis.renderer.grid.template.location = 0;
+    catAxis.renderer.labels.template.rotation = -55;
+    catAxis.renderer.labels.template.horizontalCenter = 'right';
+    catAxis.renderer.labels.template.verticalCenter = 'middle';
+    catAxis.renderer.labels.template.fontSize = 9;
+    catAxis.renderer.labels.template.fill = am4core.color(textColor);
+    catAxis.renderer.grid.template.stroke = am4core.color(gridColor);
+    catAxis.renderer.grid.template.strokeOpacity = 0.5;
+    catAxis.renderer.line.stroke = am4core.color(gridColor);
+    catAxis.renderer.ticks.template.stroke = am4core.color(gridColor);
+    catAxis.renderer.minGridDistance = 20;
+    catAxis.title.text = 'Batch Number';
+    catAxis.title.fill = am4core.color(textColor);
+    catAxis.title.fontSize = 11;
+    catAxis.title.marginTop = 6;
 
-    var valAxis1 = chart1.yAxes.push(new am4charts.ValueAxis());
-    valAxis1.min = 0;
-    valAxis1.title.text = 'Average CFU';
-    valAxis1.title.fill = am4core.color(textColor);
-    valAxis1.renderer.labels.template.fill = am4core.color(textColor);
-    valAxis1.renderer.grid.template.stroke = am4core.color(gridColor);
+    // Y axis — CFU/mL
+    var valAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valAxis.min = 0;
+    valAxis.strictMinMax = true;
+    valAxis.extraMax = 0.2;
+    valAxis.title.text = 'CFU/mL';
+    valAxis.title.fill = am4core.color(textColor);
+    valAxis.renderer.labels.template.fill = am4core.color(textColor);
+    valAxis.renderer.grid.template.stroke = am4core.color(gridColor);
+    valAxis.renderer.grid.template.strokeOpacity = 0.5;
+    valAxis.renderer.line.stroke = am4core.color(gridColor);
+    valAxis.renderer.ticks.template.stroke = am4core.color(gridColor);
 
-    var series1 = chart1.series.push(new am4charts.LineSeries());
-    series1.dataFields.valueY = 'avg';
-    series1.dataFields.categoryX = 'month';
-    series1.strokeWidth = 3;
-    series1.stroke = am4core.color('#3b82f6');
-    series1.fill = am4core.color('#3b82f6');
-    series1.fillOpacity = 0.05;
-    series1.tooltipText = '{month}\nAvg: {avg} CFU\nSamples: {count}';
+    // Line series
+    var series = chart.series.push(new am4charts.LineSeries());
+    series.dataFields.valueY = 'cfu';
+    series.dataFields.categoryX = 'batch';
+    series.strokeWidth = 2;
+    series.stroke = am4core.color('#60a5fa');   // bright sky-blue — pops on dark bg
+    series.fillOpacity = 0;
+    series.tensionX = 1;
+    series.tooltipText = '{product}\nBatch: {batch} ({run})\n{date}\nCFU/mL: {cfu}';
 
-    var bullet1 = series1.bullets.push(new am4charts.CircleBullet());
-    bullet1.circle.radius = 4;
-    bullet1.circle.strokeWidth = 2;
-    bullet1.circle.fill = am4core.color(isDark ? '#22262d' : '#fff');
-
-    var range1 = valAxis1.axisRanges.create();
-    range1.value = specLimit;
-    range1.grid.stroke = am4core.color('#ef4444');
-    range1.grid.strokeWidth = 2;
-    range1.grid.strokeDasharray = '4,4';
-    range1.label.text = 'Limit: ' + specLimit;
-    range1.label.fill = am4core.color('#ef4444');
-    range1.label.inside = true;
-    range1.label.verticalCenter = 'bottom';
-
-    chart1.cursor = new am4charts.XYCursor();
-
-    // ========== Batch Results ==========
-    var chart2 = am4core.create('batchChart', am4charts.XYChart);
-    chart2.data = JSON.parse(document.getElementById('__batchData').textContent);
-
-    var catAxis2 = chart2.xAxes.push(new am4charts.CategoryAxis());
-    catAxis2.dataFields.category = 'label';
-    catAxis2.renderer.grid.template.location = 0;
-    catAxis2.renderer.labels.template.rotation = -60;
-    catAxis2.renderer.labels.template.horizontalCenter = 'right';
-    catAxis2.renderer.labels.template.verticalCenter = 'middle';
-    catAxis2.renderer.minGridDistance = 20;
-    catAxis2.renderer.labels.template.fontSize = 9;
-    catAxis2.renderer.labels.template.fill = am4core.color(textColor);
-    catAxis2.renderer.grid.template.stroke = am4core.color(gridColor);
-
-    var valAxis2 = chart2.yAxes.push(new am4charts.ValueAxis());
-    valAxis2.min = 0;
-    valAxis2.title.text = 'Result Avg (CFU)';
-    valAxis2.title.fill = am4core.color(textColor);
-    valAxis2.renderer.labels.template.fill = am4core.color(textColor);
-    valAxis2.renderer.grid.template.stroke = am4core.color(gridColor);
-
-    var series2 = chart2.series.push(new am4charts.ColumnSeries());
-    series2.dataFields.valueY = 'avg';
-    series2.dataFields.categoryX = 'label';
-    series2.columns.template.tooltipText = '{product}\n{label}\n{date}: {avg} CFU';
-    series2.columns.template.fill = am4core.color('#10b981');
-    series2.columns.template.strokeWidth = 0;
-    series2.columns.template.column.cornerRadiusTopLeft = 3;
-    series2.columns.template.column.cornerRadiusTopRight = 3;
-
-    // Color bars red if >= limit
-    series2.columns.template.adapter.add('fill', function(fill, target) {
-        if (target.dataItem && target.dataItem.valueY >= specLimit) {
-            return am4core.color('#ef4444');
-        }
+    // Dots — green or red
+    var bullet = series.bullets.push(new am4charts.CircleBullet());
+    bullet.circle.radius = 4;
+    bullet.circle.strokeWidth = 0;
+    bullet.circle.fill = am4core.color('#34d399');   // bright emerald
+    bullet.circle.adapter.add('fill', function(fill, target) {
+        if (target.dataItem && target.dataItem.valueY >= specLimit)
+            return am4core.color('#f87171');   // bright rose-red
         return fill;
     });
 
-    var range2 = valAxis2.axisRanges.create();
-    range2.value = specLimit;
-    range2.grid.stroke = am4core.color('#ef4444');
-    range2.grid.strokeWidth = 1.5;
-    range2.grid.strokeDasharray = '4,4';
+    // Spec limit dashed line
+    var range = valAxis.axisRanges.create();
+    range.value = specLimit;
+    range.grid.stroke = am4core.color('#f87171');
+    range.grid.strokeWidth = 1.5;
+    range.grid.strokeDasharray = '5,3';
+    range.label.text = 'Spec: ' + specLimit;
+    range.label.fill = am4core.color('#f87171');
+    range.label.inside = true;
+    range.label.verticalCenter = 'bottom';
+    range.label.fontSize = 10;
 
-    chart2.cursor = new am4charts.XYCursor();
-    chart2.scrollbarX = new am4core.Scrollbar();
+    chart.cursor = new am4charts.XYCursor();
+    chart.cursor.lineY.disabled = true;
+    if (data.length > 20) chart.scrollbarX = new am4core.Scrollbar();
 });
 </script>
 @endpush

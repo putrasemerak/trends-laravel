@@ -2,11 +2,12 @@
    AIN System — Theme Variables & Base Styles
    ============================================ */
 
-/* ---------- Google Inter (Professional) ---------- */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* ---------- Google Inter (Professional) + Roboto Condensed (Dashboard/Data) ---------- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Condensed:wght@300;400;700&display=swap');
 
 :root {
     --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-condensed: 'Roboto Condensed', 'Arial Narrow', Arial, sans-serif;
 }
 
 /* ---------- Light Theme (default) ---------- */
@@ -23,7 +24,7 @@
     --input-border: #ced4da;
     --input-text: #212529;
     --chart-bg: #ffffff;
-    --shadow: 0 .125rem .25rem rgba(0,0,0,.075);
+    --shadow: 0 2px 8px rgba(0,0,0,.13);
     --card-header-bg: #f8f9fa;
     --dropdown-bg: #ffffff;
     --dropdown-text: #212529;
@@ -90,10 +91,46 @@ hr { border-top-color: var(--border-color); margin-top: .5rem; margin-bottom: .5
 .mb-4 { margin-bottom: .75rem !important; }
 .table td, .table th { padding: .25rem .4rem !important; font-size: .8rem; }
 .table-sm td, .table-sm th { padding: .2rem .35rem !important; }
-.btn { font-size: .8rem; padding: .2rem .5rem; }
-.btn-sm { font-size: .75rem; padding: .15rem .4rem; }
-.btn-lg { font-size: .9rem; padding: .35rem .75rem; }
+.btn { font-size: .8rem; padding: .38rem .75rem; }
+.btn-sm { font-size: .75rem; padding: .2rem .5rem; }
+.btn-lg { font-size: .9rem; padding: .55rem 1rem; }
 .form-control, .form-control-sm, .custom-select { font-size: .8rem; padding: .25rem .5rem; }
+/* ---- Greeting bar (sits above the navbar) ---- */
+#greetingBar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1031;
+    height: 28px;
+    background: #0d1117;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    font-size: 11px;
+    color: #8a9bb0;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+    letter-spacing: .01em;
+}
+#greetingBar strong { color: #c9d6e3; font-weight: 600; }
+#greetingBar .bi { margin-right: 4px; opacity: .7; }
+
+/* Language toggle inside greeting bar */
+.lang-toggle-bar { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+.lang-toggle-bar a { color: #8a9bb0; text-decoration: none; font-weight: 600; letter-spacing: .03em; }
+.lang-toggle-bar a:hover { color: #c9d6e3; }
+.lang-toggle-bar a.active { color: #ffffff; }
+.lang-toggle-bar span { color: #3a4a5a; }
+
+/* Language toggle buttons on login page */
+.lang-btn { color: var(--text-muted, #6c757d); text-decoration: none; padding: 2px 6px; border-radius: 4px; border: 1px solid transparent; font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+.lang-btn:hover { text-decoration: none; }
+.lang-btn-active { color: var(--text-body, #212529); border-color: var(--border-color, #dee2e6); }
+
+/* Push the fixed navbar down below the greeting bar */
+.navbar.fixed-top { top: 28px !important; }
+
 .navbar { padding: .25rem .75rem; }
 .navbar-brand { font-size: .9rem; }
 .nav-link { font-size: .8rem; padding: .3rem .6rem !important; }
@@ -111,6 +148,23 @@ hr { border-top-color: var(--border-color); margin-top: .5rem; margin-bottom: .5
 [data-theme="dark"] .navbar.bg-dark,
 [data-theme="dark"] .navbar-dark.bg-dark {
     background-color: var(--bg-navbar) !important;
+}
+
+/* Dark mode: nav-links — light green, hover amber */
+[data-theme="dark"] .navbar-dark .nav-link {
+    color: #6ee7b7 !important;
+    font-weight: 600 !important;
+    letter-spacing: .01em;
+    transition: color .2s ease, text-shadow .2s ease;
+}
+[data-theme="dark"] .navbar-dark .nav-link:hover,
+[data-theme="dark"] .navbar-dark .nav-link:focus {
+    color: #fbbf24 !important;
+    text-shadow: 0 0 8px rgba(251,191,36,.5);
+}
+[data-theme="dark"] .navbar-dark .nav-link.active {
+    color: #34d399 !important;
+    text-shadow: 0 0 6px rgba(52,211,153,.4);
 }
 
 /* --- Container / Page backgrounds --- */
@@ -150,8 +204,18 @@ hr { border-top-color: var(--border-color); margin-top: .5rem; margin-bottom: .5
     border-top-color: var(--border-color) !important;
 }
 [data-theme="dark"] .table thead th {
+    background-color: #2c3038 !important;
     border-bottom-color: var(--border-color) !important;
-    color: var(--text-body) !important;
+    color: #f0f0f0 !important;
+    font-weight: 700 !important;
+}
+
+/* Light mode thead — dark bg with white text so it never washes out */
+[data-theme="light"] .table thead th {
+    background-color: #343a40 !important;
+    color: #ffffff !important;
+    border-bottom-color: #495057 !important;
+    font-weight: 700 !important;
 }
 [data-theme="dark"] .table-striped tbody tr:nth-of-type(odd) {
     background-color: var(--table-stripe) !important;
@@ -388,4 +452,60 @@ hr { border-top-color: var(--border-color); margin-top: .5rem; margin-bottom: .5
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: .5px;
+}
+
+/* ================================================
+   CONDENSED FONT — Dashboard labels & stats
+   ================================================ */
+.font-condensed,
+.prodline-card .card-header,
+.prodline-card .prodline-stats,
+.prodline-card .spark-chart,
+.stat-card .stat-number,
+.stat-card .stat-label {
+    font-family: var(--font-condensed) !important;
+}
+
+/* ================================================
+   PRODLINE CARDS
+   ================================================ */
+.prodline-card {
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    border-radius: 8px;
+    overflow: hidden;
+}
+[data-theme="light"] .prodline-card {
+    box-shadow: 0 3px 12px rgba(0,0,0,.14), 0 1px 4px rgba(0,0,0,.08);
+}
+[data-theme="dark"] .prodline-card {
+    border: 1px solid rgba(255,255,255,.15);
+}
+.prodline-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,.12);
+}
+[data-theme="light"] .prodline-card:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.10);
+}
+[data-theme="dark"] .prodline-card:hover {
+    box-shadow: 0 6px 24px rgba(0,0,0,.5), 0 0 28px rgba(59,130,246,.7), 0 0 8px rgba(59,130,246,.9);
+}
+.prodline-card .card-header {
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 12px;
+}
+/* Stats row */
+.prodline-stats {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0 3px;
+    letter-spacing: .01em;
+}
+.prodline-stats .val {
+    font-weight: 700;
+    color: var(--text-body);
 }

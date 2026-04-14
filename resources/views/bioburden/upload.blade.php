@@ -3,48 +3,46 @@
 @section('title', 'Upload Bioburden Data')
 
 @section('content')
-<div class="container mt-3">
+<div class="container mt-3 pb-5">
     <div class="row justify-content-center">
         <div class="col-lg-10">
 
             {{-- ===== STEP 1: FILE SELECTION ===== --}}
             <div class="card mb-4" id="step1Card">
                 <div class="card-header">
-                    <i class="bi bi-cloud-arrow-up-fill"></i> Upload Bioburden Data
+                    <i class="bi bi-cloud-arrow-up-fill"></i> {{ __('app.upload_title') }}
                 </div>
                 <div class="card-body">
 
                     <div class="alert alert-info py-2 mb-3" style="font-size:12px;">
                         <i class="bi bi-info-circle"></i>
-                        <strong>No reformatting needed.</strong>
-                        Upload your original monthly monitoring Excel file.
-                        The system reads <strong>all sheets</strong> automatically — each sheet is one production line.
+                        <strong>{{ __('app.upload_info') }}</strong>
                     </div>
 
                     <div class="form-group mb-3">
-                        <label><strong>Select Monitoring Excel File</strong></label>
+                        <label><strong>{{ __('app.upload_label') }}</strong></label>
                         <div id="dropZone">
                             <input type="file" id="upload_file" accept=".xlsx,.xls" class="d-none">
 
                             <div class="drop-area text-center" id="dropArea">
                                 <i class="bi bi-file-earmark-excel" style="font-size:2.5rem; color:var(--text-muted);"></i>
                                 <p class="mb-1 mt-2" style="font-size:13px;">
-                                    Drag & drop your file here, or <a href="#" id="browseLink">browse</a>
+                                    {{ __('app.upload_drop') }} <a href="#" id="browseLink">{{ __('app.upload_browse') }}</a>
                                 </p>
-                                <small class="text-muted">Accepted: .xlsx, .xls &nbsp;|&nbsp; Max 10MB</small>
+                                <small class="text-muted">{{ __('app.upload_accepted') }}</small>
                             </div>
 
                             <div class="file-selected text-center d-none" id="fileInfo">
                                 <i class="bi bi-file-earmark-check" style="font-size:1.8rem; color:#27ae60;"></i>
                                 <p class="mb-0 mt-1" style="font-size:13px; font-weight:600;" id="fileNameLabel"></p>
                                 <small class="text-muted" id="fileSizeLabel"></small>
-                                <br><a href="#" id="removeFile" style="font-size:11px; color:#e74c3c;">Remove</a>
+                                <br><a href="#" id="removeFile" style="font-size:11px; color:#e74c3c;">{{ __('app.upload_remove') }}</a>
                             </div>
                         </div>
                     </div>
 
-                    <button id="btnPreview" class="btn btn-secondary btn-block" disabled>
-                        <i class="bi bi-eye"></i> Preview Data
+                    <button id="btnPreview" class="btn btn-preview btn-block" disabled>
+                        <i class="bi bi-eye"></i> {{ __('app.upload_preview') }}
                     </button>
 
                 </div>
@@ -70,12 +68,12 @@
                         <input type="file" id="confirmFileInput" name="upload_file" class="d-none">
 
 
-                        <div class="d-flex mt-3" style="gap:10px;">
+                        <div class="d-flex mt-4 mb-5" style="gap:10px;">
                             <button type="button" id="btnBack" class="btn btn-outline-secondary">
-                                <i class="bi bi-arrow-left"></i> Change File
+                                <i class="bi bi-arrow-left"></i> {{ __('app.upload_change') }}
                             </button>
                             <button type="submit" id="btnConfirm" class="btn btn-success flex-grow-1">
-                                <i class="bi bi-check-circle"></i> Confirm & Save to Database
+                                <i class="bi bi-check-circle"></i> {{ __('app.upload_confirm') }}
                             </button>
                         </div>
                     </form>
@@ -87,19 +85,19 @@
             <div id="importResultsSection" class="d-none">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-clipboard-check"></i> Import Results</span>
+                        <span><i class="bi bi-clipboard-check"></i> {{ __('app.res_import_title') }}</span>
                         <span id="resultsBadges"></span>
                     </div>
                     <div class="card-body p-0">
                         <table class="table table-sm mb-0" style="font-size:13px;">
                             <thead>
                                 <tr>
-                                    <th class="pl-3">Sheet</th>
-                                    <th>Line</th>
-                                    <th class="text-center">Inserted</th>
-                                    <th class="text-center">Duplicate</th>
-                                    <th class="text-center">Incomplete</th>
-                                    <th>Status</th>
+                                    <th class="pl-3">{{ __('app.res_sheet') }}</th>
+                                    <th>{{ __('app.res_line') }}</th>
+                                    <th class="text-center">{{ __('app.res_inserted') }}</th>
+                                    <th class="text-center">{{ __('app.res_duplicate') }}</th>
+                                    <th class="text-center">{{ __('app.res_incomplete') }}</th>
+                                    <th>{{ __('app.res_status') }}</th>
                                 </tr>
                             </thead>
                             <tbody id="resultsTableBody"></tbody>
@@ -108,7 +106,7 @@
                     </div>
                     <div class="card-footer text-right" style="background:none;">
                         <button type="button" id="btnNewUpload" class="btn btn-outline-primary btn-sm">
-                            <i class="bi bi-arrow-repeat"></i> New Upload
+                            <i class="bi bi-arrow-repeat"></i> {{ __('app.upload_new') }}
                         </button>
                     </div>
                 </div>
@@ -248,6 +246,79 @@
 }
 .accordion .card-header button:focus { outline: none; box-shadow: none; }
 
+/* ---- Preview button ---- */
+.btn-preview {
+    background: #0e9f8e;
+    color: #fff;
+    border: none;
+    font-weight: 700;
+    letter-spacing: .02em;
+    font-size: .9rem;
+    padding: .6rem 1.25rem;
+    transition: background .2s, box-shadow .2s, transform .1s;
+}
+.btn-preview:hover:not(:disabled) {
+    background: #0cc5af;
+    color: #fff;
+    box-shadow: 0 0 0 4px rgba(14,159,142,.25), 0 4px 14px rgba(14,159,142,.35);
+    transform: translateY(-1px);
+}
+.btn-preview:active:not(:disabled) {
+    background: #0a7d6e;
+    transform: translateY(0);
+    box-shadow: none;
+}
+.btn-preview:disabled {
+    background: #0e9f8e;
+    opacity: .38;
+    cursor: not-allowed;
+}
+[data-theme="dark"] .btn-preview {
+    background: #0fb39e;
+}
+[data-theme="dark"] .btn-preview:hover:not(:disabled) {
+    background: #13d4bb;
+    box-shadow: 0 0 0 4px rgba(15,179,158,.3), 0 4px 18px rgba(15,179,158,.4);
+}
+
+/* ---- Confirm / Save button ---- */
+#btnConfirm {
+    font-weight: 700;
+    letter-spacing: .02em;
+    font-size: .95rem;
+    padding: .65rem 1.5rem;
+    transition: background .2s, box-shadow .2s, transform .1s;
+}
+#btnConfirm:hover:not(:disabled) {
+    background-color: #1dbd5e;
+    border-color: #1aaa55;
+    color: #fff;
+    box-shadow: 0 0 0 4px rgba(40,167,69,.25), 0 4px 14px rgba(40,167,69,.35);
+    transform: translateY(-1px);
+}
+#btnConfirm:active:not(:disabled) {
+    background-color: #157a38;
+    transform: translateY(0);
+    box-shadow: none;
+}
+[data-theme="dark"] #btnConfirm {
+    background-color: #1e9e4f;
+    border-color: #1a8f46;
+    color: #fff;
+}
+[data-theme="dark"] #btnConfirm:hover:not(:disabled) {
+    background-color: #24c060;
+    border-color: #20ad57;
+    color: #fff;
+    box-shadow: 0 0 0 4px rgba(36,192,96,.3), 0 4px 18px rgba(36,192,96,.45);
+    transform: translateY(-1px);
+}
+[data-theme="dark"] #btnConfirm:active:not(:disabled) {
+    background-color: #178040;
+    transform: translateY(0);
+    box-shadow: none;
+}
+
 /* ---- Centered overlay ---- */
 .upload-overlay {
     position: fixed;
@@ -263,14 +334,15 @@
 .upload-overlay.d-none { display: none !important; }
 @keyframes overlayFadeIn { from { opacity:0; } to { opacity:1; } }
 .upload-overlay-card {
-    background: var(--card-bg, #fff);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
     border-radius: 14px;
     padding: 36px 40px 28px;
     min-width: 320px;
     max-width: 400px;
     width: 90%;
     text-align: center;
-    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
     animation: cardSlideUp .25s ease;
 }
 @keyframes cardSlideUp { from { transform: translateY(18px); opacity:0; } to { transform: translateY(0); opacity:1; } }
@@ -284,14 +356,33 @@
 }
 .overlay-icon { font-size: 1.9rem; color: #5b9bd5; }
 .overlay-icon.success { color: #27ae60; }
-.overlay-title { font-size: 15px; font-weight: 700; }
-.overlay-sub { font-size: 12px; color: var(--text-muted, #888); min-height: 18px; }
+.overlay-title { font-size: 15px; font-weight: 700; color: var(--text-body); }
+.overlay-sub { font-size: 12px; color: var(--text-muted); min-height: 18px; }
 .overlay-progress { height: 8px; border-radius: 4px; overflow: hidden; }
-.overlay-pct { font-size: 11px; color: var(--text-muted, #888); }
+.overlay-pct { font-size: 11px; color: var(--text-muted); font-weight: 600; }
 </style>
 @endpush
 
 @push('scripts')
+<script type="application/json" id="blade-i18n">{!! json_encode([
+    'col_date'       => __('app.col_date'),
+    'col_product'    => __('app.col_product'),
+    'col_batch'      => __('app.col_batch'),
+    'col_run'        => __('app.col_run'),
+    'col_avg'        => __('app.col_avg'),
+    'res_sheet'      => __('app.res_sheet'),
+    'res_line'       => __('app.res_line'),
+    'res_inserted'   => __('app.res_inserted'),
+    'res_duplicate'  => __('app.res_duplicate'),
+    'res_incomplete' => __('app.res_incomplete'),
+    'res_status'     => __('app.res_status'),
+    'res_total'      => __('app.res_total'),
+    'res_dupe_label' => __('app.res_dupe_label'),
+    'lbl_saving'     => __('app.lbl_saving'),
+]) !!}</script>
+<script>
+var __t = JSON.parse(document.getElementById('blade-i18n').textContent);
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
@@ -493,7 +584,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             '</caption>';
                 }
                 html += '<thead><tr>';
-                var cols = ['Date Tested','Product','Batch','Run','TAMC R1','TAMC R2','TYMC R1','TYMC R2','Avg'];
+                var cols = [__t.col_date, __t.col_product, __t.col_batch, __t.col_run, 'TAMC R1','TAMC R2','TYMC R1','TYMC R2', __t.col_avg];
                 if (s.has_remark) cols.push('Remark');
                 cols.forEach(function (h) { html += '<th>' + h + '</th>'; });
                 html += '</tr></thead><tbody>';
@@ -542,7 +633,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         btnConfirm.disabled = true;
         btnBack.disabled = true;
-        btnConfirm.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span> Saving...';
+        btnConfirm.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span> ' + __t.lbl_saving;
 
         /* Show import overlay */
         overlayImport.classList.remove('d-none');
@@ -678,11 +769,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 bodyHtml += '<tr class="collapse" id="' + dupeId + '">';
                 bodyHtml += '<td colspan="6" class="p-0">';
                 bodyHtml += '<div style="background:var(--bg-card);border-top:1px solid var(--border-color);padding:8px 16px;">';
-                bodyHtml += '<small class="text-warning font-weight-bold">Duplicate rows (already in DB):</small>';
+                bodyHtml += '<small class="text-warning font-weight-bold">' + __t.res_dupe_label + ':</small>';
                 bodyHtml += '<table class="table table-sm mb-0 mt-1" style="font-size:11px;">';
-                bodyHtml += '<thead><tr><th>Date Tested</th><th>Batch</th><th>Filing</th><th>Run</th></tr></thead><tbody>';
+                bodyHtml += '<thead><tr><th>Date Tested</th><th>Product Name</th><th>Batch</th><th>Filing</th><th>Run</th></tr></thead><tbody>';
                 r.dupe_list.forEach(function(d) {
-                    bodyHtml += '<tr><td>' + escHtml(d.datetested) + '</td><td>' + escHtml(d.batch) + '</td>'
+                    bodyHtml += '<tr><td>' + escHtml(d.datetested) + '</td><td>' + escHtml(d.prodname || '—') + '</td><td>' + escHtml(d.batch) + '</td>'
                         + '<td>' + escHtml(d.filing) + '</td><td>' + escHtml(d.runno) + '</td></tr>';
                 });
                 bodyHtml += '</tbody></table></div></td></tr>';
