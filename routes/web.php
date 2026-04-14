@@ -8,9 +8,9 @@ use App\Http\Controllers\HomeController;
 use App\Http\Middleware\CheckProgramAccess;
 use Illuminate\Support\Facades\Route;
 
-// Landing page
+// Landing page — redirect straight to login
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('login');
 })->name('welcome');
 
 // Auth routes
@@ -38,6 +38,7 @@ Route::middleware(['auth', CheckProgramAccess::class])->group(function () {
 
     // Smart upload — accepts original monitoring Excel files as-is
     Route::get('/smart-upload', [BioburdenUploadController::class, 'showForm'])->name('bioburden.smart-upload');
+    Route::post('/smart-upload/preview', [BioburdenUploadController::class, 'preview'])->name('bioburden.smart-upload.preview');
     Route::post('/smart-upload', [BioburdenUploadController::class, 'upload'])->name('bioburden.smart-upload.post');
 
     // Monthly remarks

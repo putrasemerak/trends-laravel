@@ -30,7 +30,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: calc(100vh - 42px);
+            min-height: 100vh;
             padding: 16px;
         }
 
@@ -48,6 +48,28 @@
             box-shadow: 0 6px 24px rgba(0,0,0,.45);
         }
 
+        /* --- Brand (logo + company name) inside card --- */
+        .login-brand {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .login-brand img {
+            height: 2.2em;
+            width: auto;
+            flex-shrink: 0;
+        }
+        .login-brand-name {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--text-body);
+            white-space: nowrap;
+            line-height: 1;
+        }
+        [data-theme="dark"] .login-brand-name { color: #e0e0e0; }
+
         /* --- Title area --- */
         .login-title {
             font-size: 14px;
@@ -55,6 +77,7 @@
             color: var(--text-body);
             margin-bottom: 2px;
         }
+        [data-theme="dark"] .login-title { color: #e0e0e0; }
         .login-subtitle {
             font-size: 10px;
             color: var(--text-muted);
@@ -203,17 +226,17 @@
 </head>
 <body>
 
-<!-- App Bar -->
-<div class="app-bar">
-    <img src="/assets/img/logoain.png" alt="Logo">
-    <span>AIN MEDICARE SDN. BHD.</span>
-</div>
-
 <div class="login-wrapper">
     <div class="login-card">
+        <!-- Brand: Logo + Company Name -->
+        <div class="login-brand">
+            <img src="/assets/img/ain_logo.png" alt="AIN Logo">
+            <span class="login-brand-name">AIN MEDICARE SDN. BHD.</span>
+        </div>
+
         <!-- Title -->
         <div class="text-center">
-            <div class="login-title">AINSystem: Trending Analysis</div>
+            <div class="login-title">Trending Analysis</div>
             <div class="login-subtitle">{{ config('app.url') }}</div>
             <div class="login-datetime">
                 <i class="bi bi-clock"></i>

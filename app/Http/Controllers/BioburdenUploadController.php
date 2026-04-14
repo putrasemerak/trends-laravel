@@ -32,7 +32,96 @@ class BioburdenUploadController extends Controller
 
     public function showForm()
     {
-        return view('bioburden.smart-upload');
+        return view('bioburden.upload');
+    }
+
+    /**
+     * AJAX — read the file, detect layout, return preview rows per sheet.
+     * Nothing is saved to the database.
+     */
+    public function preview(Request $request)
+    {
+        $request->validate([
+            'upload_file' => 'required|file|mimes:xlsx,xls|max:10240',
+        ]);
+
+        try {
+            $spreadsheet = IOFactory::load($request->file('upload_file')->getRealPath());
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Cannot read file: ' . $e->getMessage()], 422);
+        }
+
+        $sheets = [];
+
+        foreach ($spreadsheet->getSheetNames() as $sheetName) {
+            $prodline = $this->sheetMap[trim($sheetName)] ?? $this->guessProdline($sheetName);
+
+            if (!$prodline) {
+                $sheets[] = ['sheet' => $sheetName, 'prodline' => null, 'rows' => [], 'total' => 0, 'ignored' => true];
+                continue;
+            }
+
+            $sheet  = $spreadsheet->getSheetByName($sheetName);
+            $layout = $this->detectLayout($sheet);
+            $rows   = [];
+            $total  = 0;
+            $highestRow = $sheet->getHighestDataRow();
+
+            for ($row = $layout['dataStartRow']; $row <= $highestRow; $row++) {
+                $dateRaw   = $sheet->getCell([$layout['col_date'], $row])->getValue();
+                $formatted = $sheet->getCell([$layout['col_date'], $row])->getFormattedValue();
+
+                if ($dateRaw === null || $dateRaw === '') continue;
+                if (is_string($dateRaw) && !$this->looksLikeDate($dateRaw)) continue;
+
+                $datetested = $this->parseDate($dateRaw, $formatted);
+                if (!$datetested) continue;
+
+                $batch    = trim((string)($sheet->getCell([$layout['col_batch'],    $row])->getValue() ?? ''));
+                $prodname = trim((string)($sheet->getCell([$layout['col_prodname'], $row])->getValue() ?? ''));
+                $runno    = trim((string)($sheet->getCell([$layout['col_runno'],    $row])->getValue() ?? 'R1'));
+                $filing   = (!empty($layout['col_filing']))
+                    ? trim((string)($sheet->getCell([$layout['col_filing'], $row])->getValue() ?? '-'))
+                    : '-';
+                if ($filing === '') $filing = '-';
+                [$prodname, $filing] = $this->extractFiling($prodname, $filing);
+
+                if ($batch === '') continue;
+
+                $total++;
+
+                // Only collect first 8 rows for preview display
+                if (count($rows) < 8) {
+                    $rows[] = [
+                        'datetested' => $datetested,
+                        'prodname'   => $prodname,
+                        'batch'      => $batch,
+                        'filing'     => $filing,
+                        'runno'      => $runno,
+                        // Use raw formatted value so preview shows original Excel content (e.g. "<1" not "0")
+                        'tamcr1'     => trim((string)$sheet->getCell([$layout['col_tamcr1'], $row])->getFormattedValue()),
+                        'tamcr2'     => trim((string)$sheet->getCell([$layout['col_tamcr2'], $row])->getFormattedValue()),
+                        'tymcr1'     => trim((string)$sheet->getCell([$layout['col_tymcr1'], $row])->getFormattedValue()),
+                        'tymcr2'     => trim((string)$sheet->getCell([$layout['col_tymcr2'], $row])->getFormattedValue()),
+                        'resultavg'  => trim((string)$sheet->getCell([$layout['col_resultavg'], $row])->getFormattedValue()),
+                        'remark'     => (!empty($layout['col_remark']))
+                            ? trim((string)($sheet->getCell([$layout['col_remark'], $row])->getValue() ?? ''))
+                            : '',
+                    ];
+                }
+            }
+
+            $sheets[] = [
+                'sheet'      => $sheetName,
+                'prodline'   => $prodline,
+                'total'      => $total,
+                'rows'       => $rows,
+                'ignored'    => false,
+                'has_remark' => !empty($layout['col_remark']),
+            ];
+        }
+
+        return response()->json(['sheets' => $sheets]);
     }
 
     public function upload(Request $request)
@@ -79,21 +168,32 @@ class BioburdenUploadController extends Controller
             $sheet  = $spreadsheet->getSheetByName($sheetName);
             $layout = $this->detectLayout($sheet);
 
-            [$inserted, $skipped, $errors] = $this->importSheet(
+            [$inserted, $skippedDupe, $skippedIncomplete, $errors, $dupeList] = $this->importSheet(
                 $sheet, $prodline, $layout, $displayName
             );
 
             $results[]  = [
-                'sheet'    => $sheetName,
-                'prodline' => $prodline,
-                'inserted' => $inserted,
-                'skipped'  => $skipped,
-                'errors'   => $errors,
-                'ignored'  => false,
+                'sheet'             => $sheetName,
+                'prodline'          => $prodline,
+                'inserted'          => $inserted,
+                'skipped'           => $skippedDupe + $skippedIncomplete,
+                'skipped_dupe'      => $skippedDupe,
+                'skipped_incomplete'=> $skippedIncomplete,
+                'errors'            => $errors,
+                'dupe_list'         => $dupeList,
+                'ignored'           => false,
             ];
 
             $totalIn   += $inserted;
-            $totalSkip += $skipped;
+            $totalSkip += $skippedDupe + $skippedIncomplete;
+        }
+
+        if ($request->ajax() || $request->expectsJson()) {
+            return response()->json([
+                'results'        => $results,
+                'total_inserted' => $totalIn,
+                'total_skipped'  => $totalSkip,
+            ]);
         }
 
         return back()
@@ -205,14 +305,24 @@ class BioburdenUploadController extends Controller
             $layout['col_bbr_tymc_r2'] = $pairs[3][1] ?? null;
         }
 
-        // Map simple columns from header row
-        foreach ($headerData as $c => $h) {
-            if (str_contains($h, 'date'))    $layout['col_date']    = $c;
-            if (str_contains($h, 'product')) $layout['col_prodname'] = $c;
-            if (str_contains($h, 'batch'))   $layout['col_batch']   = $c;
-            if ($h === 'run' || str_contains($h, 'run no')) $layout['col_runno'] = $c;
-            if (str_contains($h, 'average') || $h === 'avg') $layout['col_resultavg'] = $c;
-            if ($h === 'limit')              $layout['col_limit']   = $c;
+        // Map simple columns from header row AND sub-header rows (some sheets put FILLING/RUN in row below)
+        $scanRows = [$headerRow];
+        if ($r1Row) {
+            for ($r = $headerRow + 1; $r < $r1Row; $r++) $scanRows[] = $r;
+        }
+        foreach ($scanRows as $scanRow) {
+            for ($c = 1; $c <= 20; $c++) {
+                $h = strtolower(trim((string)$sheet->getCell([$c, $scanRow])->getValue()));
+                if ($h === '') continue;
+                if (str_contains($h, 'date'))    $layout['col_date']     = $layout['col_date']     ?? $c;
+                if (str_contains($h, 'product')) $layout['col_prodname'] = $layout['col_prodname'] ?? $c;
+                if (str_contains($h, 'batch'))   $layout['col_batch']    = $layout['col_batch']    ?? $c;
+                if ($h === 'run' || str_contains($h, 'run no')) $layout['col_runno'] = $layout['col_runno'] ?? $c;
+                if (str_contains($h, 'average') || $h === 'avg') $layout['col_resultavg'] = $layout['col_resultavg'] ?? $c;
+                if ($h === 'limit')              $layout['col_limit']    = $layout['col_limit']    ?? $c;
+                if (str_contains($h, 'remark'))  $layout['col_remark']   = $layout['col_remark']   ?? $c;
+                if (str_contains($h, 'filling') || str_contains($h, 'filing')) $layout['col_filing'] = $layout['col_filing'] ?? $c;
+            }
         }
 
         // Fallback for AVERAGE and LIMIT — scan beyond TAMC/TYMC columns
@@ -258,6 +368,8 @@ class BioburdenUploadController extends Controller
             'col_bbr_tymc_r2'=> 13,  // M
             'col_resultavg'  => 14,  // N
             'col_limit'      => 15,  // O
+            'col_remark'     => null, // not present in all sheets; detected per-sheet
+            'col_filing'     => null, // only present in PPBOTTLE sheet
         ];
     }
 
@@ -267,9 +379,11 @@ class BioburdenUploadController extends Controller
 
     private function importSheet($sheet, string $prodline, array $layout, string $addUser): array
     {
-        $inserted   = 0;
-        $skipped    = 0;
-        $errors     = [];
+        $inserted          = 0;
+        $skippedDupe       = 0;   // already in DB
+        $skippedIncomplete = 0;   // empty batch or unparseable date
+        $errors            = [];
+        $dupeList          = [];  // details of duplicate rows
         $highestRow = $sheet->getHighestDataRow();
         $start      = $layout['dataStartRow'];
 
@@ -288,8 +402,13 @@ class BioburdenUploadController extends Controller
             $batch    = trim((string)($sheet->getCell([$layout['col_batch'],   $row])->getValue() ?? ''));
             $prodname = trim((string)($sheet->getCell([$layout['col_prodname'], $row])->getValue() ?? ''));
             $runno    = trim((string)($sheet->getCell([$layout['col_runno'],   $row])->getValue() ?? 'R1'));
+            $filing   = (!empty($layout['col_filing']))
+                ? trim((string)($sheet->getCell([$layout['col_filing'], $row])->getValue() ?? '-'))
+                : '-';
+            if ($filing === '') $filing = '-';
+            [$prodname, $filing] = $this->extractFiling($prodname, $filing);
 
-            if ($batch === '') { $skipped++; continue; }
+            if ($batch === '') { $skippedIncomplete++; continue; }
 
             $tamcr1      = $this->toInt($sheet->getCell([$layout['col_tamcr1'],      $row])->getValue());
             $tamcr2      = $this->toInt($sheet->getCell([$layout['col_tamcr2'],      $row])->getValue());
@@ -300,23 +419,39 @@ class BioburdenUploadController extends Controller
             $bbrTymcR1   = $this->toInt($sheet->getCell([$layout['col_bbr_tymc_r1'], $row])->getValue());
             $bbrTymcR2   = $this->toInt($sheet->getCell([$layout['col_bbr_tymc_r2'], $row])->getValue());
 
-            $resultavg = (float)($sheet->getCell([$layout['col_resultavg'], $row])->getValue() ?? 0);
-            $limit     = (float)($sheet->getCell([$layout['col_limit'],     $row])->getValue() ?? 10);
+            $resultavg = $this->toFloat($sheet->getCell([$layout['col_resultavg'], $row])->getValue());
+            $limit     = $this->toFloat($sheet->getCell([$layout['col_limit'],     $row])->getValue());
             if ($limit <= 0) $limit = 10;
+
+            $remark = (!empty($layout['col_remark']))
+                ? trim((string)($sheet->getCell([$layout['col_remark'], $row])->getValue() ?? ''))
+                : '';
 
             // Check duplicate
             $exists = BioburdenUpload::where('prodline',   $prodline)
                 ->where('batch',      $batch)
+                ->where('filing',     $filing)
+                ->where('prodname',   $prodname)
                 ->where('runno',      $runno)
                 ->where('datetested', $datetested)
                 ->exists();
 
-            if ($exists) { $skipped++; continue; }
+            if ($exists) {
+                $skippedDupe++;
+                $dupeList[] = [
+                    'batch'      => $batch,
+                    'filing'     => $filing,
+                    'runno'      => $runno,
+                    'datetested' => $datetested,
+                ];
+                continue;
+            }
 
             try {
                 BioburdenUpload::create([
                     'prodline'     => $prodline,
                     'batch'        => $batch,
+                    'filing'       => $filing,
                     'prodname'     => $prodname,
                     'datetested'   => $datetested,
                     'runno'        => $runno,
@@ -330,6 +465,7 @@ class BioburdenUploadController extends Controller
                     'bbr_tymc_r2'  => $bbrTymcR2,
                     'resultavg'    => $resultavg,
                     'limit'        => $limit,
+                    'remark'       => $remark ?: null,
                     'AddDate'      => now()->format('Y-m-d'),
                     'AddTime'      => now()->format('H:i:s'),
                     'AddUser'      => $addUser,
@@ -338,11 +474,11 @@ class BioburdenUploadController extends Controller
                 $inserted++;
             } catch (\Exception $e) {
                 $errors[] = "Row {$row}: " . $e->getMessage();
-                $skipped++;
+                $skippedIncomplete++;
             }
         }
 
-        return [$inserted, $skipped, $errors];
+        return [$inserted, $skippedDupe, $skippedIncomplete, $errors, $dupeList];
     }
 
     // -------------------------------------------------------------------------
@@ -391,9 +527,44 @@ class BioburdenUploadController extends Controller
         return null;
     }
 
+    /**
+     * Convert a cell value to int.
+     * Handles lab notation like "<1", ">2", "~0" by stripping non-numeric prefixes.
+     */
     private function toInt(mixed $value): int
     {
         if ($value === null || $value === '') return 0;
+        if (is_string($value)) {
+            $value = preg_replace('/^[<>~≤≥\s]+/', '', trim($value));
+            if ($value === '') return 0;
+        }
         return (int)round((float)$value);
+    }
+
+    /**
+     * Convert a cell value to float.
+     * Handles lab notation like "<1", ">2" — treated as 0.
+     */
+    /**
+     * If prodname ends with " (A)", " (B)", etc., extract the letter as filing
+     * and return the cleaned prodname. Otherwise filing stays unchanged.
+     * Returns [$cleanProdname, $filing].
+     */
+    private function extractFiling(string $prodname, string $filing): array
+    {
+        if (preg_match('/^(.+?)\s*\(([A-Z])\)\s*$/', $prodname, $m)) {
+            return [trim($m[1]), $m[2]];
+        }
+        return [$prodname, $filing];
+    }
+
+    private function toFloat(mixed $value): float
+    {
+        if ($value === null || $value === '') return 0.0;
+        if (is_string($value)) {
+            $value = preg_replace('/^[<>~≤≥\s]+/', '', trim($value));
+            if ($value === '') return 0.0;
+        }
+        return (float)$value;
     }
 }

@@ -14,6 +14,7 @@ class BioburdenUpload extends Model
     protected $fillable = [
         'prodline',
         'batch',
+        'filing',
         'prodname',
         'datetested',
         'runno',
@@ -27,6 +28,7 @@ class BioburdenUpload extends Model
         'bbr_tymc_r2',
         'resultavg',
         'limit',
+        'remark',
         'AddDate',
         'AddTime',
         'AddUser',

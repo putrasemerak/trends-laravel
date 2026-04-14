@@ -59,7 +59,7 @@
                     <a class="nav-link" href="{{ route('home', [], false) }}"><i class="bi bi-grid"></i> Programs</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('upload.form', [], false) }}"><i class="bi bi-cloud-arrow-up"></i> Upload</a>
+                    <a class="nav-link" href="{{ route('bioburden.smart-upload', [], false) }}"><i class="bi bi-cloud-arrow-up"></i> Upload</a>
                 </li>
             </ul>
             <button class="theme-toggle" data-toggle-theme title="Toggle theme">
