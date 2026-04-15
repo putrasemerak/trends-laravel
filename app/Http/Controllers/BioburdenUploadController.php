@@ -577,8 +577,10 @@ class BioburdenUploadController extends Controller
      */
     private function extractFiling(string $prodname, string $filing): array
     {
+        // Extract filing letter from suffix e.g. "HEMACOM LF (A)" → filing=A
+        // but keep the full prodname including the suffix intact
         if (preg_match('/^(.+?)\s*\(([A-Z])\)\s*$/', $prodname, $m)) {
-            return [trim($m[1]), $m[2]];
+            return [$prodname, $m[2]];
         }
         return [$prodname, $filing];
     }

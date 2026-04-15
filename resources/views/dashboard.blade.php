@@ -7,6 +7,11 @@
 .prodline-card .card-body { padding: 8px 12px 4px; }
 .prodline-card .spark-chart { width: 100%; height: 100px; }
 .spark-no-data { width:100%; height:100px; display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--text-muted); opacity:.6; letter-spacing:.03em; }
+.prodline-card.card-alert { border-color: rgba(239,68,68,.6) !important; animation: pulse-red 2.5s ease-in-out infinite; }
+@keyframes pulse-red {
+    0%, 100% { box-shadow: 0 0 6px rgba(239,68,68,.35); }
+    50%       { box-shadow: 0 0 18px rgba(239,68,68,.75), 0 0 6px rgba(239,68,68,.9); }
+}
 </style>
 @endpush
 
@@ -21,7 +26,7 @@
             @foreach($prodlines as $pl)
                 <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
                     <a href="{{ route('dashboard.detail', $pl->prodline, false) }}" class="text-decoration-none">
-                        <div class="card prodline-card">
+                        <div class="card prodline-card {{ $pl->max_result >= $specLimit ? 'card-alert' : '' }}">
                             <div class="card-header">
                                 <i class="bi bi-activity"></i> {{ $pl->prodline }}
                             </div>
@@ -93,20 +98,31 @@ am4core.ready(function() {
         valAxis.renderer.labels.template.fill = am4core.color(textColor);
         valAxis.renderer.minGridDistance = 30;
 
+        // Colour line red if ANY month breaches spec, blue otherwise
+        var hasSpike = sparklines[prodline].some(function(d) { return d.avg >= specLimit; });
+        var lineColor = hasSpike ? '#ef4444' : '#3b82f6';
+        var fillColor = hasSpike ? '#ef4444' : '#3b82f6';
+
         var series = chart.series.push(new am4charts.LineSeries());
         series.dataFields.valueY = 'avg';
         series.dataFields.categoryX = 'month';
-        series.strokeWidth = 1.5;
-        series.stroke = am4core.color('#3b82f6');
-        series.fill   = am4core.color('#3b82f6');
-        series.fillOpacity = 0.07;
+        series.strokeWidth = 2;
+        series.stroke = am4core.color(lineColor);
+        series.fill   = am4core.color(fillColor);
+        series.fillOpacity = 0.08;
         series.tensionX = 0.8;
         series.tooltipText = '{month}: {avg} CFU';
 
         var bullet = series.bullets.push(new am4charts.CircleBullet());
-        bullet.circle.radius = 2;
-        bullet.circle.fill = am4core.color('#3b82f6');
+        bullet.circle.radius = 3;
+        bullet.circle.fill = am4core.color(lineColor);
         bullet.circle.strokeWidth = 0;
+        // Individual dots: red if that month breaches spec
+        bullet.circle.adapter.add('fill', function(fill, target) {
+            if (target.dataItem && target.dataItem.valueY >= specLimit)
+                return am4core.color('#ef4444');
+            return fill;
+        });
 
         // Spec limit line
         var range = valAxis.axisRanges.create();

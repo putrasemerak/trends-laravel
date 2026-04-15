@@ -190,9 +190,9 @@ document.addEventListener('DOMContentLoaded', function() {
     chart.background.fillOpacity = 1;
     chart.plotContainer.background.fillOpacity = 0;
 
-    // X axis — Batch Number
+    // X axis — Batch / Run / Filing label (unique per record)
     var catAxis = chart.xAxes.push(new am4charts.CategoryAxis());
-    catAxis.dataFields.category = 'batch';
+    catAxis.dataFields.category = 'label';
     catAxis.renderer.grid.template.location = 0;
     catAxis.renderer.labels.template.rotation = -55;
     catAxis.renderer.labels.template.horizontalCenter = 'right';
@@ -204,7 +204,7 @@ document.addEventListener('DOMContentLoaded', function() {
     catAxis.renderer.line.stroke = am4core.color(gridColor);
     catAxis.renderer.ticks.template.stroke = am4core.color(gridColor);
     catAxis.renderer.minGridDistance = 20;
-    catAxis.title.text = 'Batch Number';
+    catAxis.title.text = 'Batch / Run / Filing';
     catAxis.title.fill = am4core.color(textColor);
     catAxis.title.fontSize = 11;
     catAxis.title.marginTop = 6;
@@ -225,12 +225,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Line series
     var series = chart.series.push(new am4charts.LineSeries());
     series.dataFields.valueY = 'cfu';
-    series.dataFields.categoryX = 'batch';
+    series.dataFields.categoryX = 'label';
     series.strokeWidth = 2;
     series.stroke = am4core.color('#60a5fa');   // bright sky-blue — pops on dark bg
     series.fillOpacity = 0;
     series.tensionX = 1;
-    series.tooltipText = '{product}\nBatch: {batch} ({run})\n{date}\nCFU/mL: {cfu}';
+    series.tooltipText = '{product}\nBatch: {batch} | {run} | Filing: {filing}\n{date}\nCFU/mL: {cfu}';
 
     // Dots — green or red
     var bullet = series.bullets.push(new am4charts.CircleBullet());

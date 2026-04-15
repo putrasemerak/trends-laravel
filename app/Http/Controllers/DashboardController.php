@@ -16,8 +16,7 @@ class DashboardController extends Controller
     {
         $now = Carbon::now();
         $specLimit = 10;
-        $monthsBack = 6;
-        $cutoff = $now->copy()->subMonths($monthsBack)->startOfMonth()->format('Y-m-d');
+        $sparkMonths = 6; // how many most-recent months to show on sparkline
 
         // Get all active prodlines with summary stats
         $prodlines = DB::connection('devdb')
@@ -35,6 +34,7 @@ class DashboardController extends Controller
             ->get();
 
         // For each prodline, get last N months of monthly averages (for sparkline)
+        // Uses actual data range — not calendar cutoff — so historical uploads always show
         $sparklines = [];
         foreach ($prodlines as $pl) {
             $sparklines[$pl->prodline] = DB::connection('devdb')
@@ -42,10 +42,11 @@ class DashboardController extends Controller
                 ->selectRaw("FORMAT(datetested, 'yyyy-MM') AS m, AVG(resultavg) AS avg_val")
                 ->where('Status', 'ACTIVE')
                 ->where('prodline', $pl->prodline)
-                ->where('datetested', '>=', $cutoff)
                 ->groupByRaw("FORMAT(datetested, 'yyyy-MM')")
-                ->orderByRaw("FORMAT(datetested, 'yyyy-MM')")
+                ->orderByRaw("FORMAT(datetested, 'yyyy-MM') DESC")
+                ->limit($sparkMonths)
                 ->get()
+                ->sortBy('m')           // re-sort ascending for chart display
                 ->map(fn($r) => ['month' => $r->m, 'avg' => round($r->avg_val, 2)])
                 ->values();
         }
@@ -181,6 +182,7 @@ class DashboardController extends Controller
             ->orderBy('batch')
             ->get()
             ->map(fn($r) => [
+                'label'   => $r->batch . ' ' . $r->runno . ($r->filing !== '-' ? ' ' . $r->filing : ''),
                 'batch'   => $r->batch,
                 'cfu'     => (float) $r->resultavg,
                 'tamc'    => (float) $r->tamcr1 > 0 || (float) $r->tamcr2 > 0
@@ -189,6 +191,7 @@ class DashboardController extends Controller
                 'date'    => Carbon::parse($r->datetested)->format('d-M'),
                 'product' => $r->prodname,
                 'run'     => $r->runno,
+                'filing'  => $r->filing,
             ])->values();
 
         return view('dashboard-detail', compact(
