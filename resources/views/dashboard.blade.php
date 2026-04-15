@@ -76,53 +76,44 @@ am4core.ready(function() {
             return;
         }
 
+        var raw = sparklines[prodline];
+
         var chart = am4core.create(divId, am4charts.XYChart);
-        chart.data = sparklines[prodline];
+        chart.data = raw;
         chart.paddingTop = 5;
         chart.paddingBottom = 0;
         chart.paddingLeft = 0;
         chart.paddingRight = 0;
 
         var catAxis = chart.xAxes.push(new am4charts.CategoryAxis());
-        catAxis.dataFields.category = 'month';
+        catAxis.dataFields.category = 'i';
         catAxis.renderer.grid.template.disabled = true;
-        catAxis.renderer.labels.template.fontSize = 9;
-        catAxis.renderer.labels.template.fill = am4core.color(textColor);
-        catAxis.renderer.minGridDistance = 40;
+        catAxis.renderer.labels.template.disabled = true;  // no x labels — too many points
 
         var valAxis = chart.yAxes.push(new am4charts.ValueAxis());
         valAxis.min = 0;
+        valAxis.strictMinMax = true;   // force axis to start at 0 always
+        valAxis.extraMax = 0.15;       // small breathing room above max value
         valAxis.renderer.grid.template.stroke = am4core.color(gridColor);
         valAxis.renderer.grid.template.strokeDasharray = '2,2';
         valAxis.renderer.labels.template.fontSize = 9;
         valAxis.renderer.labels.template.fill = am4core.color(textColor);
         valAxis.renderer.minGridDistance = 30;
 
-        // Colour line red if ANY month breaches spec, blue otherwise
-        var hasSpike = sparklines[prodline].some(function(d) { return d.avg >= specLimit; });
+        // Colour line red if ANY record breaches spec, blue otherwise
+        var hasSpike = raw.some(function(d) { return d.avg >= specLimit; });
         var lineColor = hasSpike ? '#ef4444' : '#3b82f6';
-        var fillColor = hasSpike ? '#ef4444' : '#3b82f6';
 
         var series = chart.series.push(new am4charts.LineSeries());
         series.dataFields.valueY = 'avg';
-        series.dataFields.categoryX = 'month';
+        series.dataFields.categoryX = 'i';
         series.strokeWidth = 2;
         series.stroke = am4core.color(lineColor);
-        series.fill   = am4core.color(fillColor);
-        series.fillOpacity = 0.08;
-        series.tensionX = 0.8;
-        series.tooltipText = '{month}: {avg} CFU';
+        series.fillOpacity = 0;   // no fill — prevents closed-path distortion
+        series.tensionX = 0.77;   // smooth bezier curve
+        series.tooltipText = '{lbl}: {avg} CFU';
 
-        var bullet = series.bullets.push(new am4charts.CircleBullet());
-        bullet.circle.radius = 3;
-        bullet.circle.fill = am4core.color(lineColor);
-        bullet.circle.strokeWidth = 0;
-        // Individual dots: red if that month breaches spec
-        bullet.circle.adapter.add('fill', function(fill, target) {
-            if (target.dataItem && target.dataItem.valueY >= specLimit)
-                return am4core.color('#ef4444');
-            return fill;
-        });
+        // No dots — clean smooth line only; spike still visible as line turns red
 
         // Spec limit line
         var range = valAxis.axisRanges.create();

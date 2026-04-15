@@ -28,6 +28,24 @@
     box-shadow: 0 0 10px rgba(59,130,246,.6);
 }
 #cfuMonthChart { width: 100%; height: 320px; }
+
+/* Chart spinner overlay — visible on page load, dismissed when chart is ready */
+#chartSpinner {
+    position: absolute; inset: 0; z-index: 20;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    background: rgba(30,41,59,.92); border-radius: 0 0 6px 6px;
+    transition: opacity 0.5s ease;
+}
+#chartSpinner .cs-ring {
+    width: 48px; height: 48px;
+    border: 5px solid rgba(96,165,250,.25);
+    border-top-color: #60a5fa;
+    border-radius: 50%;
+    animation: csSpin 0.85s linear infinite;
+}
+@keyframes csSpin { to { transform: rotate(360deg); } }
+#chartSpinner .cs-label { color: #e2e8f0; font-size: 13px; font-weight: 500; letter-spacing: .5px; }
+#chartSpinner .cs-done  { color: #34d399; font-size: 13px; font-weight: 700; letter-spacing: .5px; }
 </style>
 @endpush
 
@@ -92,17 +110,23 @@
                     <strong><i class="bi bi-graph-up-arrow"></i> CFU/mL vs Batch Number</strong>
                     <form method="GET" action="{{ route('dashboard.detail', $prodline, false) }}" class="d-flex align-items-center" style="gap:6px;">
                         <label for="monthSelect" class="mb-0" style="font-size:12px;font-weight:600;">Month:</label>
-                        <select id="monthSelect" name="month" class="form-control form-control-sm" style="width:auto;" onchange="this.form.submit()">
+                        <select id="monthSelect" name="month" class="form-control form-control-sm" style="width:auto;">
+                            <option value="ALL" {{ 'ALL' === $selectedMonth ? 'selected' : '' }}>— All Records —</option>
                             @foreach($availableMonths as $m)
                                 <option value="{{ $m }}" {{ $m === $selectedMonth ? 'selected' : '' }}>{{ $m }}</option>
                             @endforeach
                         </select>
                     </form>
                 </div>
-                <div class="card-body">
+                <div class="card-body" style="position:relative;">
                     @if($cfuMonthData->isEmpty())
-                        <div class="text-muted text-center py-4" style="font-size:13px;">No data for {{ $selectedMonth }}</div>
+                        <div class="text-muted text-center py-4" style="font-size:13px;">No data for {{ $selectedMonth === 'ALL' ? 'this prodline' : $selectedMonth }}</div>
                     @else
+                        {{-- Spinner overlay: shown on load, dismissed by amCharts ready event --}}
+                        <div id="chartSpinner">
+                            <div class="cs-ring"></div>
+                            <div class="cs-label" id="csLabel">Menjana Carta...</div>
+                        </div>
                         <div id="cfuMonthChart"></div>
                         <p class="text-muted mt-1 mb-0" style="font-size:10px;">
                             <span class="text-danger">&#9679;</span> At/above spec limit &nbsp;
@@ -174,6 +198,12 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Month select — submit form (spinner shows naturally on new page load)
+    var monthSel = document.getElementById('monthSelect');
+    if (monthSel) {
+        monthSel.addEventListener('change', function() { this.form.submit(); });
+    }
+
     var el = document.getElementById('cfuMonthChart');
     if (!el) return;
 
@@ -229,14 +259,15 @@ document.addEventListener('DOMContentLoaded', function() {
     series.strokeWidth = 2;
     series.stroke = am4core.color('#60a5fa');   // bright sky-blue — pops on dark bg
     series.fillOpacity = 0;
-    series.tensionX = 1;
+    // Use mild smoothing — high enough to prevent bezier loop artefacts on spikes
+    series.tensionX = data.length > 60 ? 0.95 : 0.88;
     series.tooltipText = '{product}\nBatch: {batch} | {run} | Filing: {filing}\n{date}\nCFU/mL: {cfu}';
 
     // Dots — green or red
     var bullet = series.bullets.push(new am4charts.CircleBullet());
-    bullet.circle.radius = 4;
+    bullet.circle.radius = 2;
     bullet.circle.strokeWidth = 0;
-    bullet.circle.fill = am4core.color('#34d399');   // bright emerald
+    bullet.circle.fill = am4core.color('#34d399');
     bullet.circle.adapter.add('fill', function(fill, target) {
         if (target.dataItem && target.dataItem.valueY >= specLimit)
             return am4core.color('#f87171');   // bright rose-red
@@ -257,7 +288,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
     chart.cursor = new am4charts.XYCursor();
     chart.cursor.lineY.disabled = true;
-    if (data.length > 20) chart.scrollbarX = new am4core.Scrollbar();
+    if (data.length > 20) {
+        var scrollbar = new am4core.Scrollbar();
+        chart.scrollbarX = scrollbar;
+        chart.scrollbarX.parent = chart.bottomAxesContainer;
+
+        // Style scrollbar to be obviously interactive — amber thumb/grips
+        scrollbar.thumb.background.fill    = am4core.color('#6ee7b7');  // mint green track
+        scrollbar.thumb.background.opacity = 0.8;
+        scrollbar.startGrip.background.fill = am4core.color('#f59e0b'); // amber handles
+        scrollbar.endGrip.background.fill   = am4core.color('#f59e0b'); // amber handles
+        scrollbar.background.fill           = am4core.color('#4a5568');
+        scrollbar.background.opacity        = 0.4;
+    }
+
+    // When chart finishes — show Selesai, then fade out and remove spinner
+    chart.events.on('ready', function() {
+        var spinner = document.getElementById('chartSpinner');
+        var label   = document.getElementById('csLabel');
+        if (!spinner) return;
+        var ring = spinner.querySelector('.cs-ring');
+        if (ring) { ring.style.animation = 'none'; ring.style.borderColor = '#34d399'; }
+        if (label) { label.textContent = 'Selesai ✓'; label.className = 'cs-done'; }
+        setTimeout(function() {
+            spinner.style.opacity = '0';
+            setTimeout(function() { spinner.style.display = 'none'; }, 500);
+        }, 1000);
+    });
 });
 </script>
 @endpush

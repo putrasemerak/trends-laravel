@@ -16,18 +16,20 @@ class BioburdenUploadController extends Controller
      * Trim is applied before lookup to handle trailing spaces.
      */
     protected array $sheetMap = [
-        'PP BOTTLE' => 'PPBOTTLE',
-        'SYRINGE'   => 'SYRINGE',
-        'SVP 4'     => 'SVP4',
-        'SVP 3'     => 'SVP3',
-        'SVP 2'     => 'SVP2',
-        'SVP 1'     => 'SVP1',
-        'Medibag'   => 'MEDIBAG',
-        'BFS 5'     => 'BFS5',
-        'BFS4'      => 'BFS4',
-        'BFS3'      => 'BFS3',
-        'BFS2'      => 'BFS2',
-        'BFS 1'     => 'BFS1',
+        'PP BOTTLE'    => 'PPBOTTLE',
+        'SYRINGE'      => 'SYRINGE',
+        'SVP 4'        => 'SVP4',
+        'SVP 3'        => 'SVP3',
+        'SVP 2'        => 'SVP2',
+        'SVP 1'        => 'SVP1',
+        'Medibag'      => 'MEDIBAG',
+        'BFS 5'        => 'BFS5',
+        'BFS4'         => 'BFS4',
+        'BFS3'         => 'BFS3',
+        'BFS2'         => 'BFS2',
+        'BFS 1'        => 'BFS1',
+        'PERITONIL H1' => 'PERITONIL H1',
+        'PERITONIL'    => 'PERITONIL',
     ];
 
     public function showForm()
@@ -408,6 +410,7 @@ class BioburdenUploadController extends Controller
         $skippedIncomplete = 0;   // empty batch or unparseable date
         $errors            = [];
         $dupeList          = [];  // details of duplicate rows
+        $seenInBatch       = []; // tracks keys processed in THIS upload to catch within-file dupes
         $highestRow = $sheet->getHighestDataRow();
         $start      = $layout['dataStartRow'];
 
@@ -451,11 +454,12 @@ class BioburdenUploadController extends Controller
                 ? trim((string)($sheet->getCell([$layout['col_remark'], $row])->getValue() ?? ''))
                 : '';
 
-            // Check duplicate
-            $exists = BioburdenUpload::where('prodline',   $prodline)
+            // Check duplicate — DB + within-file (same key already processed in this upload)
+            $key = implode('|', [$prodline, $batch, $prodname, $filing, $runno, $datetested]);
+            $exists = isset($seenInBatch[$key]) || BioburdenUpload::where('prodline',   $prodline)
                 ->where('batch',      $batch)
-                ->where('filing',     $filing)
                 ->where('prodname',   $prodname)
+                ->where('filing',     $filing)
                 ->where('runno',      $runno)
                 ->where('datetested', $datetested)
                 ->exists();
@@ -497,6 +501,7 @@ class BioburdenUploadController extends Controller
                     'Status'       => 'ACTIVE',
                 ]);
                 $inserted++;
+                $seenInBatch[$key] = true;  // mark so within-file dupes are caught
             } catch (\Exception $e) {
                 $errors[] = "Row {$row}: " . $e->getMessage();
                 $skippedIncomplete++;
@@ -512,10 +517,16 @@ class BioburdenUploadController extends Controller
 
     private function guessProdline(string $name): ?string
     {
-        $n = strtoupper(trim(preg_replace('/\s+/', '', $name)));
+        $n = strtoupper(trim(preg_replace('/\s+/', ' ', $name)));
         $known = ['SVP1','SVP2','SVP3','SVP4','BFS1','BFS2','BFS3','BFS4','BFS5',
-                  'PPBOTTLE','SYRINGE','MEDIBAG'];
-        return in_array($n, $known) ? $n : null;
+                  'PPBOTTLE','SYRINGE','MEDIBAG','PERITONIL H1','PERITONIL'];
+        // Also try stripping spaces for compact names
+        $compact = str_replace(' ', '', $n);
+        $knownCompact = ['SVP1','SVP2','SVP3','SVP4','BFS1','BFS2','BFS3','BFS4','BFS5',
+                         'PPBOTTLE','SYRINGE','MEDIBAG'];
+        if (in_array($n, $known)) return $n;
+        if (in_array($compact, $knownCompact)) return $compact;
+        return null;
     }
 
     private function looksLikeDate(string $value): bool
@@ -577,10 +588,13 @@ class BioburdenUploadController extends Controller
      */
     private function extractFiling(string $prodname, string $filing): array
     {
-        // Extract filing letter from suffix e.g. "HEMACOM LF (A)" → filing=A
-        // but keep the full prodname including the suffix intact
-        if (preg_match('/^(.+?)\s*\(([A-Z])\)\s*$/', $prodname, $m)) {
-            return [$prodname, $m[2]];
+        // Normalise: replace non-breaking spaces and other Unicode whitespace with plain space
+        $clean = preg_replace('/[\xc2\xa0\s]+/', ' ', $prodname);
+        $clean = trim($clean);
+
+        // Match suffix e.g. "HEMACOM LF (A)" or "HEMACOM LF(B)" — case-insensitive
+        if (preg_match('/^(.+?)\s*\(([A-Za-z])\)\s*$/u', $clean, $m)) {
+            return [$prodname, strtoupper($m[2])];  // keep original prodname, return uppercase letter
         }
         return [$prodname, $filing];
     }

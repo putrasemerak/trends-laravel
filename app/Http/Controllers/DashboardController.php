@@ -34,20 +34,24 @@ class DashboardController extends Controller
             ->get();
 
         // For each prodline, get last N months of monthly averages (for sparkline)
-        // Uses actual data range — not calendar cutoff — so historical uploads always show
+        // Individual records — actual resultavg per test, most recent 60 records per prodline
         $sparklines = [];
         foreach ($prodlines as $pl) {
             $sparklines[$pl->prodline] = DB::connection('devdb')
                 ->table('TS_0020')
-                ->selectRaw("FORMAT(datetested, 'yyyy-MM') AS m, AVG(resultavg) AS avg_val")
+                ->select('datetested', 'resultavg', 'batch', 'prodname')
                 ->where('Status', 'ACTIVE')
                 ->where('prodline', $pl->prodline)
-                ->groupByRaw("FORMAT(datetested, 'yyyy-MM')")
-                ->orderByRaw("FORMAT(datetested, 'yyyy-MM') DESC")
-                ->limit($sparkMonths)
+                ->orderBy('datetested', 'DESC')
+                ->limit(500)   // enough for a full year across high-volume prodlines
                 ->get()
-                ->sortBy('m')           // re-sort ascending for chart display
-                ->map(fn($r) => ['month' => $r->m, 'avg' => round($r->avg_val, 2)])
+                ->sortBy('datetested')
+                ->values()
+                ->map(fn($r, $i) => [
+                    'i'   => $i + 1,
+                    'avg' => (float) $r->resultavg,
+                    'lbl' => \Carbon\Carbon::parse($r->datetested)->format('d-M') . ' ' . $r->batch,
+                ])
                 ->values();
         }
 
@@ -166,33 +170,56 @@ class DashboardController extends Controller
 
         $selectedMonth = $request->get('month', $availableMonths->first() ?? $now->format('Y-m'));
 
-        // Clamp to valid format
-        if (!preg_match('/^\d{4}-\d{2}$/', $selectedMonth)) {
+        // Allow ALL or clamp to valid yyyy-MM format
+        if ($selectedMonth !== 'ALL' && !preg_match('/^\d{4}-\d{2}$/', $selectedMonth)) {
             $selectedMonth = $now->format('Y-m');
         }
 
-        [$selYear, $selMon] = explode('-', $selectedMonth);
-        $monthStart = Carbon::createFromDate((int)$selYear, (int)$selMon, 1)->startOfMonth()->format('Y-m-d');
-        $monthEnd   = Carbon::createFromDate((int)$selYear, (int)$selMon, 1)->endOfMonth()->format('Y-m-d');
+        if ($selectedMonth === 'ALL') {
+            $cfuMonthData = BioburdenUpload::active()
+                ->forProdline($prodline)
+                ->orderBy('datetested')
+                ->orderBy('batch')
+                ->orderBy('runno')
+                ->get()
+                ->map(fn($r) => [
+                    // Prefix with month-year to guarantee globally unique labels
+                    // (same batch+run can reappear across months, causing X-axis backward jumps)
+                    'label'   => Carbon::parse($r->datetested)->format('M\'y') . ' ' . $r->batch . ' ' . $r->runno . ($r->filing !== '-' ? ' ' . $r->filing : ''),
+                    'batch'   => $r->batch,
+                    'cfu'     => (float) $r->resultavg,
+                    'tamc'    => (float) $r->tamcr1 > 0 || (float) $r->tamcr2 > 0
+                                    ? round(collect([$r->tamcr1, $r->tamcr2])->filter(fn($v) => $v > 0)->avg(), 1)
+                                    : 0,
+                    'date'    => Carbon::parse($r->datetested)->format('d-M-Y'),
+                    'product' => $r->prodname,
+                    'run'     => $r->runno,
+                    'filing'  => $r->filing,
+                ])->values();
+        } else {
+            [$selYear, $selMon] = explode('-', $selectedMonth);
+            $monthStart = Carbon::createFromDate((int)$selYear, (int)$selMon, 1)->startOfMonth()->format('Y-m-d');
+            $monthEnd   = Carbon::createFromDate((int)$selYear, (int)$selMon, 1)->endOfMonth()->format('Y-m-d');
 
-        $cfuMonthData = BioburdenUpload::active()
-            ->forProdline($prodline)
-            ->dateRange($monthStart, $monthEnd)
-            ->orderBy('datetested')
-            ->orderBy('batch')
-            ->get()
-            ->map(fn($r) => [
-                'label'   => $r->batch . ' ' . $r->runno . ($r->filing !== '-' ? ' ' . $r->filing : ''),
-                'batch'   => $r->batch,
-                'cfu'     => (float) $r->resultavg,
-                'tamc'    => (float) $r->tamcr1 > 0 || (float) $r->tamcr2 > 0
-                                ? round(collect([$r->tamcr1, $r->tamcr2])->filter(fn($v) => $v > 0)->avg(), 1)
-                                : 0,
-                'date'    => Carbon::parse($r->datetested)->format('d-M'),
-                'product' => $r->prodname,
-                'run'     => $r->runno,
-                'filing'  => $r->filing,
-            ])->values();
+            $cfuMonthData = BioburdenUpload::active()
+                ->forProdline($prodline)
+                ->dateRange($monthStart, $monthEnd)
+                ->orderBy('datetested')
+                ->orderBy('batch')
+                ->get()
+                ->map(fn($r) => [
+                    'label'   => $r->batch . ' ' . $r->runno . ($r->filing !== '-' ? ' ' . $r->filing : ''),
+                    'batch'   => $r->batch,
+                    'cfu'     => (float) $r->resultavg,
+                    'tamc'    => (float) $r->tamcr1 > 0 || (float) $r->tamcr2 > 0
+                                    ? round(collect([$r->tamcr1, $r->tamcr2])->filter(fn($v) => $v > 0)->avg(), 1)
+                                    : 0,
+                    'date'    => Carbon::parse($r->datetested)->format('d-M'),
+                    'product' => $r->prodname,
+                    'run'     => $r->runno,
+                    'filing'  => $r->filing,
+                ])->values();
+        }
 
         return view('dashboard-detail', compact(
             'prodline', 'stats', 'monthlyChartData', 'recentEntries',
