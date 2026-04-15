@@ -33,8 +33,7 @@ class DashboardController extends Controller
             ->orderBy('prodline')
             ->get();
 
-        // For each prodline, get last N months of monthly averages (for sparkline)
-        // Individual records — actual resultavg per test, most recent 60 records per prodline
+        // Individual records — actual resultavg per test, most recent 500 records per prodline
         $sparklines = [];
         foreach ($prodlines as $pl) {
             $sparklines[$pl->prodline] = DB::connection('devdb')
@@ -43,7 +42,7 @@ class DashboardController extends Controller
                 ->where('Status', 'ACTIVE')
                 ->where('prodline', $pl->prodline)
                 ->orderBy('datetested', 'DESC')
-                ->limit(500)   // enough for a full year across high-volume prodlines
+                ->limit(500)
                 ->get()
                 ->sortBy('datetested')
                 ->values()

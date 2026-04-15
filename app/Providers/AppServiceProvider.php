@@ -3,9 +3,7 @@
 namespace App\Providers;
 
 use App\Auth\EmployeeUserProvider;
-use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -27,7 +25,7 @@ class AppServiceProvider extends ServiceProvider
             return new EmployeeUserProvider();
         });
 
-        // Apply locale from session on every request
-        App::setLocale(Session::get('locale', 'ms'));
+        // Locale is applied per-request via App\Http\Middleware\SetLocale
+        // (session is not yet available here at boot time)
     }
 }
