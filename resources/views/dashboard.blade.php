@@ -12,10 +12,59 @@
     0%, 100% { box-shadow: 0 0 6px rgba(239,68,68,.35); }
     50%       { box-shadow: 0 0 18px rgba(239,68,68,.75), 0 0 6px rgba(239,68,68,.9); }
 }
+
+/* Dashboard page-load spinner overlay */
+#dashSpinner {
+    position: fixed; inset: 0; z-index: 1055;
+    background: rgba(0,0,0,.52);
+    backdrop-filter: blur(3px);
+    display: flex; align-items: center; justify-content: center;
+    animation: dsFadeIn .2s ease;
+    transition: opacity .5s ease;
+}
+@keyframes dsFadeIn { from { opacity:0; } to { opacity:1; } }
+#dashSpinner .ds-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 36px 40px 28px;
+    min-width: 300px; max-width: 360px; width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    animation: dsSlideUp .25s ease;
+}
+@keyframes dsSlideUp { from { transform: translateY(16px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+.ds-brand { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #5b9bd5; margin-bottom: 18px; opacity: .85; }
+.ds-brand i { font-size: 13px; margin-right: 4px; }
+.ds-ring-wrap {
+    width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 16px;
+    display: flex; align-items: center; justify-content: center;
+}
+.ds-ring {
+    width: 48px; height: 48px;
+    border: 4px solid rgba(96,165,250,.25);
+    border-top-color: #60a5fa;
+    border-radius: 50%;
+    animation: dsSpin .85s linear infinite;
+}
+@keyframes dsSpin { to { transform: rotate(360deg); } }
+.ds-title { font-size: 15px; font-weight: 700; color: var(--text-body); margin-bottom: 4px; }
+.ds-sub { font-size: 12px; color: var(--text-muted); }
+.ds-done { color: #34d399; font-size: 13px; font-weight: 700; }
 </style>
 @endpush
 
 @section('content')
+{{-- Page-load spinner — visible until all sparklines are ready --}}
+<div id="dashSpinner">
+    <div class="ds-card">
+        <div class="ds-brand"><i class="bi bi-graph-up"></i> Laboratory Trending Analysis</div>
+        <div class="ds-ring-wrap"><div class="ds-ring"></div></div>
+        <div class="ds-title" id="dsTitle">{{ __('app.dash_title') }}</div>
+        <div class="ds-sub" id="dsSub">{{ __('app.lbl_loading_charts') }}</div>
+    </div>
+</div>
+
 <div class="container-fluid px-4">
     <h5 class="mb-3"><i class="bi bi-speedometer2"></i> {{ __('app.dash_title') }}</h5>
 
@@ -64,6 +113,33 @@ am4core.ready(function() {
     var gridColor = isDark ? '#3a3f47' : '#eee';
     var specLimit = JSON.parse(document.getElementById('__specLimit').textContent);
     var sparklines = JSON.parse(document.getElementById('__sparklines').textContent);
+
+    var chartCount   = Object.keys(sparklines).filter(function(k) {
+        return sparklines[k] && sparklines[k].length > 0;
+    }).length;
+    var chartsReady = 0;
+
+    function onChartReady() {
+        chartsReady++;
+        if (chartsReady >= chartCount) {
+            var spinner = document.getElementById('dashSpinner');
+            var title   = document.getElementById('dsTitle');
+            var sub     = document.getElementById('dsSub');
+            var ring    = spinner ? spinner.querySelector('.ds-ring') : null;
+            if (ring)  { ring.style.animation = 'none'; ring.style.borderColor = '#34d399'; }
+            if (title) title.textContent = 'Selesai ✓';
+            if (sub)   { sub.textContent = ''; sub.className = 'ds-done'; }
+            setTimeout(function() {
+                if (spinner) {
+                    spinner.style.opacity = '0';
+                    setTimeout(function() { spinner.style.display = 'none'; }, 500);
+                }
+            }, 800);
+        }
+    }
+
+    // If no charts to render, dismiss immediately
+    if (chartCount === 0) onChartReady();
 
     function slugify(s) { return s.replace(/[^a-z0-9]+/gi, '-').toLowerCase(); }
 
@@ -125,6 +201,8 @@ am4core.ready(function() {
 
         chart.cursor = new am4charts.XYCursor();
         chart.cursor.lineY.disabled = true;
+
+        chart.events.on('ready', onChartReady);
     });
 });
 </script>

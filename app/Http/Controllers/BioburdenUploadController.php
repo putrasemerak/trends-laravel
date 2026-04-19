@@ -94,15 +94,12 @@ class BioburdenUploadController extends Controller
 
                 $total++;
 
-                // Only collect first 8 rows for preview display
-                if (count($rows) < 8) {
-                    $rows[] = [
+                $rows[] = [
                         'datetested' => $datetested,
                         'prodname'   => $prodname,
                         'batch'      => $batch,
                         'filing'     => $filing,
                         'runno'      => $runno,
-                        // Use raw formatted value so preview shows original Excel content (e.g. "<1" not "0")
                         'tamcr1'     => trim((string)$sheet->getCell([$layout['col_tamcr1'], $row])->getFormattedValue()),
                         'tamcr2'     => trim((string)$sheet->getCell([$layout['col_tamcr2'], $row])->getFormattedValue()),
                         'tymcr1'     => trim((string)$sheet->getCell([$layout['col_tymcr1'], $row])->getFormattedValue()),
@@ -112,7 +109,6 @@ class BioburdenUploadController extends Controller
                             ? trim((string)($sheet->getCell([$layout['col_remark'], $row])->getValue() ?? ''))
                             : '',
                     ];
-                }
             }
 
             $sheets[] = [

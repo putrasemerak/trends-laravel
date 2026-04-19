@@ -4,6 +4,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BioburdenController;
 use App\Http\Controllers\BioburdenUploadController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmController;
+use App\Http\Controllers\EmUploadController;
 use App\Http\Controllers\HomeController;
 use App\Http\Middleware\CheckProgramAccess;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +33,7 @@ Route::middleware(['auth', CheckProgramAccess::class])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/{prodline}', [DashboardController::class, 'detail'])->name('dashboard.detail');
+    Route::get('/dashboard/{prodline}/records', [DashboardController::class, 'records'])->name('dashboard.records');
 
     // Home / program menu
     Route::get('/home', [HomeController::class, 'index'])->name('home');
@@ -52,4 +55,13 @@ Route::middleware(['auth', CheckProgramAccess::class])->group(function () {
     // Monthly remarks
     Route::post('/bioburden/remark', [BioburdenController::class, 'storeRemark'])->name('bioburden.remark.store');
     Route::post('/bioburden/remark/update', [BioburdenController::class, 'updateRemark'])->name('bioburden.remark.update');
+
+    // ── Environmental Monitoring ───────────────────────────────────────────
+    Route::get('/em', [EmController::class, 'index'])->name('em.dashboard');
+
+    Route::get('/em/upload', [EmUploadController::class, 'showForm'])->name('em.upload');
+    Route::post('/em/upload/preview', [EmUploadController::class, 'preview'])->name('em.upload.preview');
+    Route::post('/em/upload', [EmUploadController::class, 'upload'])->name('em.upload.post');
+
+    Route::get('/em/{machine}', [EmController::class, 'detail'])->name('em.detail');
 });

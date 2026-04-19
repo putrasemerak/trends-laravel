@@ -49,7 +49,7 @@ class DashboardController extends Controller
                 ->map(fn($r, $i) => [
                     'i'   => $i + 1,
                     'avg' => (float) $r->resultavg,
-                    'lbl' => \Carbon\Carbon::parse($r->datetested)->format('d-M') . ' ' . $r->batch,
+                    'lbl' => Carbon::parse($r->datetested)->format('d-M') . ' ' . $r->batch,
                 ])
                 ->values();
         }
@@ -167,7 +167,7 @@ class DashboardController extends Controller
             ->orderByRaw("FORMAT(datetested, 'yyyy-MM') DESC")
             ->pluck('ym');
 
-        $selectedMonth = $request->get('month', $availableMonths->first() ?? $now->format('Y-m'));
+        $selectedMonth = $request->input('month', $availableMonths->first() ?? $now->format('Y-m'));
 
         // Allow ALL or clamp to valid yyyy-MM format
         if ($selectedMonth !== 'ALL' && !preg_match('/^\d{4}-\d{2}$/', $selectedMonth)) {
@@ -225,5 +225,35 @@ class DashboardController extends Controller
             'batchData', 'yearlyTrend', 'cfuBatchPlot', 'specLimit', 'allProdlines',
             'availableMonths', 'selectedMonth', 'cfuMonthData'
         ));
+    }
+
+    /**
+     * AJAX endpoint — all records for a prodline, used by the All Records DataTable.
+     */
+    public function records(Request $request, string $prodline)
+    {
+        $specLimit = 10;
+
+        $rows = BioburdenUpload::active()
+            ->forProdline($prodline)
+            ->orderByDesc('datetested')
+            ->orderByDesc('batch')
+            ->get()
+            ->map(fn($r) => [
+                'date'      => $r->datetested->format('d-M-Y'),
+                'prodname'  => $r->prodname,
+                'batch'     => $r->batch,
+                'runno'     => $r->runno,
+                'filing'    => $r->filing,
+                'tamcr1'    => $r->tamcr1,
+                'tamcr2'    => $r->tamcr2,
+                'tymcr1'    => $r->tymcr1,
+                'tymcr2'    => $r->tymcr2,
+                'resultavg' => $r->resultavg,
+                'anomaly'   => $r->resultavg >= $specLimit,
+                'adduser'   => $r->AddUser,
+            ]);
+
+        return response()->json(['data' => $rows]);
     }
 }

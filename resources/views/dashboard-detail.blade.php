@@ -186,18 +186,146 @@
             </div>
         </div>
     </div>
+
+    {{-- All Records accordion — lazy-loaded via AJAX on first open --}}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="accordion" id="allRecordsAccordion">
+                <div class="accordion-item" style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
+                    <h2 class="accordion-header" id="allRecordsHeading">
+                        <button class="accordion-button collapsed" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#allRecordsBody"
+                                aria-expanded="false" aria-controls="allRecordsBody"
+                                style="font-size:13px; font-weight:600; background: var(--bg-card); color: var(--text-heading);">
+                            <i class="bi bi-table me-2"></i>
+                            All Records — {{ $prodline }}
+                            <span class="badge bg-secondary ms-2" style="font-size:10px;">{{ $stats->total_samples ?? 0 }}</span>
+                            <span class="ms-2 text-muted" style="font-size:11px; font-weight:400;">Click to expand &amp; search</span>
+                        </button>
+                    </h2>
+                    <div id="allRecordsBody" class="accordion-collapse collapse" aria-labelledby="allRecordsHeading">
+                        <div class="accordion-body p-2">
+                            <div id="allRecordsLoading" class="text-center py-4 text-muted" style="font-size:13px;">
+                                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                {{ __('app.lbl_loading_records') }}
+                            </div>
+                            <div id="allRecordsTableWrap" style="display:none;">
+                                <table id="allRecordsTable" class="table table-sm table-striped table-hover w-100" style="font-size:12px;">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Product</th>
+                                            <th>Batch</th>
+                                            <th class="text-center">Run</th>
+                                            <th class="text-center">Filing</th>
+                                            <th class="text-center">TAMC R1</th>
+                                            <th class="text-center">TAMC R2</th>
+                                            <th class="text-center">TYMC R1</th>
+                                            <th class="text-center">TYMC R2</th>
+                                            <th class="text-center">Avg CFU</th>
+                                            <th>Added By</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 @endsection
 
 @push('scripts')
+<link rel="stylesheet" href="{{ asset('assets/datatables/jquery.dataTables.min.css') }}">
+<script src="{{ asset('assets/datatables/jquery-3.5.1.js') }}"></script>
+<script src="{{ asset('assets/datatables/jquery.dataTables.min.js') }}"></script>
+<script src="{{ asset('assets/datatables/dataTables.buttons.min.js') }}"></script>
+<script src="{{ asset('assets/datatables/buttons.html5.min.js') }}"></script>
+<script src="{{ asset('assets/datatables/jszip.min.js') }}"></script>
+
 <script type="application/json" id="__cfuMonthData">@json($cfuMonthData)</script>
 <script type="application/json" id="__specLimit">{{ $specLimit }}</script>
+<script type="application/json" id="__i18n">{!! json_encode([
+    'lbl_search'         => __('app.lbl_search'),
+    'lbl_show'           => __('app.lbl_show'),
+    'lbl_info'           => __('app.lbl_info'),
+    'lbl_loading_records'=> __('app.lbl_loading_records'),
+    'lbl_failed_load'    => __('app.lbl_failed_load'),
+]) !!}</script>
+<script>var __recordsUrl = "{{ route('dashboard.records', $prodline, false) }}";</script>
 
 <script src="https://cdn.amcharts.com/lib/4/core.js"></script>
 <script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    var __i = JSON.parse(document.getElementById('__i18n').textContent);
+
+    // All Records DataTable — lazy load on first accordion open
+    var recordsLoaded = false;
+    var accordionEl = document.getElementById('allRecordsBody');
+    if (accordionEl) {
+        accordionEl.addEventListener('show.bs.collapse', function() {
+            if (recordsLoaded) return;
+            recordsLoaded = true;
+            fetch(__recordsUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function(r) { return r.json(); })
+                .then(function(json) {
+                    var specLimit = JSON.parse(document.getElementById('__specLimit').textContent);
+                    var wrap = document.getElementById('allRecordsTableWrap');
+                    var loading = document.getElementById('allRecordsLoading');
+                    if (loading) loading.style.display = 'none';
+                    if (wrap) wrap.style.display = '';
+
+                    $('#allRecordsTable').DataTable({
+                        data: json.data,
+                        pageLength: 25,
+                        order: [[0, 'desc']],
+                        dom: '<"d-flex justify-content-between align-items-center mb-2"lfB>rtip',
+                        buttons: [{ extend: 'csvHtml5', text: '<i class="bi bi-download"></i> CSV', className: 'btn btn-sm btn-outline-secondary' }],
+                        columns: [
+                            { data: 'date' },
+                            { data: 'prodname' },
+                            { data: 'batch' },
+                            { data: 'runno',   className: 'text-center' },
+                            { data: 'filing',  className: 'text-center' },
+                            { data: 'tamcr1',  className: 'text-center' },
+                            { data: 'tamcr2',  className: 'text-center' },
+                            { data: 'tymcr1',  className: 'text-center' },
+                            { data: 'tymcr2',  className: 'text-center' },
+                            {
+                                data: 'resultavg',
+                                className: 'text-center fw-bold',
+                                render: function(v, type, row) {
+                                    if (type === 'display') {
+                                        var cls = row.anomaly ? 'text-danger' : 'text-success';
+                                        return '<span class="' + cls + '">' + v + '</span>';
+                                    }
+                                    return v;
+                                }
+                            },
+                            { data: 'adduser' },
+                        ],
+                        createdRow: function(row, data) {
+                            if (data.anomaly) $(row).addClass('table-danger');
+                        },
+                        language: {
+                            search: __i.lbl_search,
+                            lengthMenu: __i.lbl_show,
+                            info: __i.lbl_info,
+                            paginate: { previous: '&lsaquo;', next: '&rsaquo;' },
+                        },
+                    });
+                })
+                .catch(function() {
+                    var loading = document.getElementById('allRecordsLoading');
+                    if (loading) loading.innerHTML = '<span class="text-danger">' + __i.lbl_failed_load + '</span>';
+                });
+        });
+    }
     // Month select — submit form (spinner shows naturally on new page load)
     var monthSel = document.getElementById('monthSelect');
     if (monthSel) {

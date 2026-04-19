@@ -68,13 +68,45 @@
 
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav mr-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('dashboard', [], false) }}"><i class="bi bi-speedometer2"></i> {{ __('app.nav_dashboard') }}</a>
+
+                {{-- Bioburden dropdown --}}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle {{ request()->routeIs('dashboard*') || request()->routeIs('bioburden*') ? 'active' : '' }}"
+                       href="#" id="navBB" role="button"
+                       data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="bi bi-droplet-half"></i> {{ __('app.nav_bioburden') }}
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navBB">
+                        <a class="dropdown-item {{ request()->routeIs('dashboard*') ? 'active' : '' }}"
+                           href="{{ route('dashboard', [], false) }}">
+                            <i class="bi bi-speedometer2"></i> {{ __('app.nav_bb_dashboard') }}
+                        </a>
+                        <a class="dropdown-item {{ request()->routeIs('bioburden.smart-upload*') ? 'active' : '' }}"
+                           href="{{ route('bioburden.smart-upload', [], false) }}">
+                            <i class="bi bi-cloud-arrow-up"></i> {{ __('app.nav_bb_upload') }}
+                        </a>
+                    </div>
                 </li>
-                {{-- Programs menu hidden (route kept) --}}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('bioburden.smart-upload', [], false) }}"><i class="bi bi-cloud-arrow-up"></i> {{ __('app.nav_upload') }}</a>
+
+                {{-- Environmental Monitoring dropdown --}}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle {{ request()->routeIs('em.*') ? 'active' : '' }}"
+                       href="#" id="navEM" role="button"
+                       data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="bi bi-wind"></i> {{ __('app.nav_em') }}
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navEM">
+                        <a class="dropdown-item {{ request()->routeIs('em.dashboard*') ? 'active' : '' }}"
+                           href="{{ route('em.dashboard', [], false) }}">
+                            <i class="bi bi-graph-up"></i> {{ __('app.nav_em_dashboard') }}
+                        </a>
+                        <a class="dropdown-item {{ request()->routeIs('em.upload*') ? 'active' : '' }}"
+                           href="{{ route('em.upload', [], false) }}">
+                            <i class="bi bi-cloud-arrow-up"></i> {{ __('app.nav_em_upload') }}
+                        </a>
+                    </div>
                 </li>
+
             </ul>
             <button class="theme-toggle" data-toggle-theme title="Toggle theme">
                 <i class="bi bi-moon-fill theme-icon"></i>

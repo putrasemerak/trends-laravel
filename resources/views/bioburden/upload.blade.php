@@ -190,11 +190,14 @@
 {{-- ===== OVERLAY: Preview scanning ===== --}}
 <div id="overlayPreview" class="upload-overlay d-none" role="status" aria-live="polite">
     <div class="upload-overlay-card">
+        <div class="overlay-brand">
+            <i class="bi bi-graph-up"></i> Laboratory Trending Analysis
+        </div>
         <div class="overlay-icon-wrap mb-3">
             <i class="bi bi-file-earmark-spreadsheet overlay-icon"></i>
         </div>
-        <div class="overlay-title mb-1">Scanning File</div>
-        <div class="overlay-sub mb-3" id="previewStepLabel">Reading sheets...</div>
+        <div class="overlay-title mb-1">{{ __('app.ovl_scan_title') }}</div>
+        <div class="overlay-sub mb-3" id="previewStepLabel">{{ __('app.ovl_scan_reading') }}</div>
         <div class="progress overlay-progress">
             <div id="previewProgressBar"
                  class="progress-bar progress-bar-striped progress-bar-animated bg-info"
@@ -208,11 +211,14 @@
 {{-- ===== OVERLAY: Saving to database ===== --}}
 <div id="overlayImport" class="upload-overlay d-none" role="status" aria-live="polite">
     <div class="upload-overlay-card">
+        <div class="overlay-brand">
+            <i class="bi bi-graph-up"></i> Laboratory Trending Analysis
+        </div>
         <div class="overlay-icon-wrap mb-3">
             <i class="bi bi-database-up overlay-icon" id="importOverlayIcon"></i>
         </div>
-        <div class="overlay-title mb-1" id="importOverlayTitle">Saving to Database</div>
-        <div class="overlay-sub mb-3" id="importStepLabel">Uploading file...</div>
+        <div class="overlay-title mb-1" id="importOverlayTitle">{{ __('app.ovl_save_title') }}</div>
+        <div class="overlay-sub mb-3" id="importStepLabel">{{ __('app.ovl_save_uploading') }}</div>
         <div class="progress overlay-progress">
             <div id="progressBar"
                  class="progress-bar progress-bar-striped progress-bar-animated"
@@ -347,15 +353,23 @@
 }
 @keyframes cardSlideUp { from { transform: translateY(18px); opacity:0; } to { transform: translateY(0); opacity:1; } }
 .overlay-icon-wrap {
-    width: 64px; height: 64px;
+    width: 72px; height: 72px;
     border-radius: 50%;
-    background: rgba(91,155,213,.12);
+    background: linear-gradient(135deg, rgba(91,155,213,.18) 0%, rgba(91,155,213,.08) 100%);
+    border: 2px solid rgba(91,155,213,.35);
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 0 18px rgba(91,155,213,.2);
 }
-.overlay-icon { font-size: 1.9rem; color: #5b9bd5; }
+.overlay-icon { font-size: 2.1rem; color: #5b9bd5; }
 .overlay-icon.success { color: #27ae60; }
+.overlay-brand {
+    font-size: 11px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: #5b9bd5;
+    margin-bottom: 18px; opacity: .85;
+}
+.overlay-brand i { font-size: 13px; margin-right: 4px; }
 .overlay-title { font-size: 15px; font-weight: 700; color: var(--text-body); }
 .overlay-sub { font-size: 12px; color: var(--text-muted); min-height: 18px; }
 .overlay-progress { height: 8px; border-radius: 4px; overflow: hidden; }
@@ -364,21 +378,51 @@
 @endpush
 
 @push('scripts')
+<link rel="stylesheet" href="{{ asset('assets/datatables/jquery.dataTables.min.css') }}">
+<script src="{{ asset('assets/datatables/jquery-3.5.1.js') }}"></script>
+<script src="{{ asset('assets/datatables/jquery.dataTables.min.js') }}"></script>
+<script src="{{ asset('assets/datatables/dataTables.buttons.min.js') }}"></script>
+<script src="{{ asset('assets/datatables/buttons.html5.min.js') }}"></script>
+<script src="{{ asset('assets/datatables/jszip.min.js') }}"></script>
 <script type="application/json" id="blade-i18n">{!! json_encode([
-    'col_date'       => __('app.col_date'),
-    'col_product'    => __('app.col_product'),
-    'col_batch'      => __('app.col_batch'),
-    'col_run'        => __('app.col_run'),
-    'col_avg'        => __('app.col_avg'),
-    'res_sheet'      => __('app.res_sheet'),
-    'res_line'       => __('app.res_line'),
-    'res_inserted'   => __('app.res_inserted'),
-    'res_duplicate'  => __('app.res_duplicate'),
-    'res_incomplete' => __('app.res_incomplete'),
-    'res_status'     => __('app.res_status'),
-    'res_total'      => __('app.res_total'),
-    'res_dupe_label' => __('app.res_dupe_label'),
-    'lbl_saving'     => __('app.lbl_saving'),
+    'col_date'           => __('app.col_date'),
+    'col_product'        => __('app.col_product'),
+    'col_batch'          => __('app.col_batch'),
+    'col_run'            => __('app.col_run'),
+    'col_avg'            => __('app.col_avg'),
+    'res_sheet'          => __('app.res_sheet'),
+    'res_line'           => __('app.res_line'),
+    'res_inserted'       => __('app.res_inserted'),
+    'res_duplicate'      => __('app.res_duplicate'),
+    'res_incomplete'     => __('app.res_incomplete'),
+    'res_status'         => __('app.res_status'),
+    'res_total'          => __('app.res_total'),
+    'res_dupe_label'     => __('app.res_dupe_label'),
+    'lbl_saving'         => __('app.lbl_saving'),
+    'ovl_scan_title'     => __('app.ovl_scan_title'),
+    'ovl_scan_reading'   => __('app.ovl_scan_reading'),
+    'ovl_scan_header'    => __('app.ovl_scan_header'),
+    'ovl_scan_layout'    => __('app.ovl_scan_layout'),
+    'ovl_scan_extract'   => __('app.ovl_scan_extract'),
+    'ovl_scan_prepare'   => __('app.ovl_scan_prepare'),
+    'ovl_scan_done'      => __('app.ovl_scan_done'),
+    'ovl_save_title'     => __('app.ovl_save_title'),
+    'ovl_save_uploading' => __('app.ovl_save_uploading'),
+    'ovl_save_processing'=> __('app.ovl_save_processing'),
+    'ovl_save_complete'  => __('app.ovl_save_complete'),
+    'ovl_save_done'      => __('app.ovl_save_done'),
+    'ovl_err_read'       => __('app.ovl_err_read'),
+    'ovl_err_server'     => __('app.ovl_err_server'),
+    'ovl_err_response'   => __('app.ovl_err_response'),
+    'ovl_err_network'    => __('app.ovl_err_network'),
+    'lbl_rows_across'    => __('app.lbl_rows_across'),
+    'lbl_sheets'         => __('app.lbl_sheets'),
+    'lbl_anomaly'        => __('app.lbl_anomaly'),
+    'lbl_loading_records'=> __('app.lbl_loading_records'),
+    'lbl_failed_load'    => __('app.lbl_failed_load'),
+    'lbl_search'         => __('app.lbl_search'),
+    'lbl_show'           => __('app.lbl_show'),
+    'lbl_info'           => __('app.lbl_info'),
 ]) !!}</script>
 <script>
 var __t = JSON.parse(document.getElementById('blade-i18n').textContent);
@@ -490,7 +534,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
             /* Finish bar at 100% then reveal content */
-            setPreviewProgress(100, 'Done!');
+            setPreviewProgress(100, __t.ovl_scan_done);
             setTimeout(function () {
                 hideOverlayPreview();
                 renderPreview(data.sheets);
@@ -498,21 +542,19 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .catch(function () {
             hideOverlayPreview();
-            alert('Failed to read file. Please try again.');
+        alert(__t.ovl_err_read);
             resetPreviewBtn();
         });
     });
 
     function showOverlayPreview() {
         overlayPreview.classList.remove('d-none');
-        setPreviewProgress(0, 'Reading sheets...');
-        /* Animate 0 → 85% while server works */
-        var cur = 0;
+        setPreviewProgress(0, __t.ovl_scan_reading);
         var steps = [
-            [15, 400,  'Parsing header rows...'],
-            [40, 900,  'Detecting column layout...'],
-            [65, 1600, 'Extracting data rows...'],
-            [85, 2400, 'Preparing preview...'],
+            [15, 400,  __t.ovl_scan_header],
+            [40, 900,  __t.ovl_scan_layout],
+            [65, 1600, __t.ovl_scan_extract],
+            [85, 2400, __t.ovl_scan_prepare],
         ];
         steps.forEach(function (s) {
             setTimeout(function () {
@@ -539,6 +581,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /* ---- Render preview ---- */
+    var previewDtInstances = {}; // track DataTable instances per sheet
     function renderPreview(sheets) {
         previewContent.classList.remove('d-none');
         btnPreview.innerHTML = '<i class="bi bi-eye"></i> Preview Data';
@@ -549,13 +592,13 @@ document.addEventListener('DOMContentLoaded', function () {
         sheets.forEach(function (s) { if (!s.ignored) totalRows += s.total; });
 
         previewFileName.textContent = selectedFile.name;
-        previewTotalBadge.textContent = totalRows + ' rows across ' + activeSheets.length + ' sheet(s)';
+        previewTotalBadge.textContent = totalRows + ' ' + __t.lbl_rows_across + ' ' + activeSheets.length + ' ' + __t.lbl_sheets;
 
         var html = '<div class="accordion" id="acc">';
         sheets.forEach(function (s, idx) {
             var isIgnored = s.ignored || s.total === 0;
             var headClass = isIgnored ? 'bg-light text-muted' : '';
-            var collapseShow = (!isIgnored && idx < 3) ? 'show' : '';
+            var collapseShow = (!isIgnored && idx === 0) ? 'show' : ''; // only first open
 
             html += '<div class="card mb-1 ' + (isIgnored ? 'sheet-badge-ignored' : '') + '">';
             html += '<div class="card-header ' + headClass + '">';
@@ -563,50 +606,30 @@ document.addEventListener('DOMContentLoaded', function () {
             html +=   '<i class="bi bi-table mr-1"></i> ' + escHtml(s.sheet);
             if (s.prodline) html += ' <span class="badge badge-secondary ml-1">' + escHtml(s.prodline) + '</span>';
             if (!isIgnored) {
+                var anomalyCount = s.rows.filter(function(r){ return parseFloat(r.resultavg) >= 10; }).length;
                 html += ' <span class="badge badge-info ml-1">' + s.total + ' rows</span>';
+                if (anomalyCount > 0) html += ' <span class="badge badge-danger ml-1"><i class="bi bi-exclamation-triangle"></i> ' + anomalyCount + ' ' + __t.lbl_anomaly + '</span>';
             } else {
                 html += ' <span class="badge badge-light ml-1 text-muted">Skipped</span>';
             }
             html += '</button></div>';
             html += '<div id="sheet' + idx + '" class="collapse ' + collapseShow + '">';
-            html += '<div class="card-body p-0">';
+            html += '<div class="card-body p-2">';
 
             if (isIgnored) {
                 html += '<p class="text-muted p-3 mb-0" style="font-size:12px;">Sheet not recognised as a production line \u2014 will be skipped.</p>';
             } else if (s.rows.length === 0) {
                 html += '<p class="text-muted p-3 mb-0" style="font-size:12px;">No valid data rows detected.</p>';
             } else {
-                html += '<div class="table-responsive">';
-                html += '<table class="table table-sm table-bordered sheet-preview-table mb-0">';
-                if (s.has_remark) {
-                    html += '<caption style="caption-side:top; font-size:10px; color:var(--text-muted); padding:4px 8px;">' +
-                            '<i class="bi bi-info-circle"></i> Values like <code>&lt;1</code> will be saved as <strong>0</strong>.' +
-                            '</caption>';
-                }
+                var hasRemark = s.has_remark;
+                html += '<table id="previewDt_' + idx + '" class="table table-sm table-bordered sheet-preview-table w-100" style="font-size:11px;">';
                 html += '<thead><tr>';
-                var cols = [__t.col_date, __t.col_product, __t.col_batch, __t.col_run, 'TAMC R1','TAMC R2','TYMC R1','TYMC R2', __t.col_avg];
-                if (s.has_remark) cols.push('Remark');
-                cols.forEach(function (h) { html += '<th>' + h + '</th>'; });
-                html += '</tr></thead><tbody>';
-                s.rows.forEach(function (row) {
-                    html += '<tr>';
-                    html += '<td>' + escHtml(row.datetested) + '</td>';
-                    html += '<td>' + escHtml(row.prodname)   + '</td>';
-                    html += '<td>' + escHtml(row.batch)      + '</td>';
-                    html += '<td>' + escHtml(row.runno)      + '</td>';
-                    html += '<td>' + escHtml(row.tamcr1)     + '</td>';
-                    html += '<td>' + escHtml(row.tamcr2)     + '</td>';
-                    html += '<td>' + escHtml(row.tymcr1)     + '</td>';
-                    html += '<td>' + escHtml(row.tymcr2)     + '</td>';
-                    html += '<td>' + escHtml(row.resultavg)  + '</td>';
-                    if (s.has_remark) html += '<td class="text-muted">' + escHtml(row.remark) + '</td>';
-                    html += '</tr>';
+                [__t.col_date, 'Filing', __t.col_product, __t.col_batch, __t.col_run,
+                 'TAMC R1','TAMC R2','TYMC R1','TYMC R2', __t.col_avg].forEach(function(h){
+                    html += '<th>' + h + '</th>';
                 });
-                if (s.total > s.rows.length) {
-                    var span = s.has_remark ? 10 : 9;
-                    html += '<tr><td colspan="' + span + '" class="text-center text-muted" style="font-size:11px;">... and ' + (s.total - s.rows.length) + ' more rows</td></tr>';
-                }
-                html += '</tbody></table></div>';
+                if (hasRemark) html += '<th>Remark</th>';
+                html += '</tr></thead><tbody></tbody></table>';
             }
 
             html += '</div></div></div>';
@@ -614,11 +637,64 @@ document.addEventListener('DOMContentLoaded', function () {
         html += '</div>';
         sheetAccordion.innerHTML = html;
 
+        // Init DataTables for each non-ignored sheet
+        sheets.forEach(function (s, idx) {
+            if (s.ignored || s.rows.length === 0) return;
+            var specLimit = 10;
+            var tableId = '#previewDt_' + idx;
+            var cols = [
+                { data: 'datetested' },
+                { data: 'filing', className: 'text-center' },
+                { data: 'prodname' },
+                { data: 'batch' },
+                { data: 'runno', className: 'text-center' },
+                { data: 'tamcr1', className: 'text-center' },
+                { data: 'tamcr2', className: 'text-center' },
+                { data: 'tymcr1', className: 'text-center' },
+                { data: 'tymcr2', className: 'text-center' },
+                {
+                    data: 'resultavg', className: 'text-center fw-bold',
+                    render: function(v, type) {
+                        if (type === 'display') {
+                            var cls = parseFloat(v) >= specLimit ? 'text-danger' : 'text-success';
+                            return '<span class="' + cls + '">' + escHtml(v) + '</span>';
+                        }
+                        return v;
+                    }
+                },
+            ];
+            if (s.has_remark) cols.push({ data: 'remark', className: 'text-muted' });
+
+            var dt = $(tableId).DataTable({
+                data: s.rows,
+                columns: cols,
+                pageLength: 25,
+                order: [[0, 'asc']],
+                dom: '<"d-flex justify-content-between align-items-center mb-2"lfB>rtip',
+                buttons: [{ extend: 'csvHtml5', text: '<i class="bi bi-download"></i> CSV', className: 'btn btn-sm btn-outline-secondary' }],
+                createdRow: function(row, data) {
+                    if (parseFloat(data.resultavg) >= specLimit) $(row).addClass('table-warning');
+                },
+                language: {
+                    search: __t.lbl_search,
+                    lengthMenu: __t.lbl_show,
+                    info: __t.lbl_info,
+                    paginate: { previous: '&lsaquo;', next: '&rsaquo;' },
+                },
+            });
+            previewDtInstances[idx] = dt;
+
+            // Re-draw when accordion opens (DataTables needs visible container to render columns)
+            document.getElementById('sheet' + idx).addEventListener('shown.bs.collapse', function() {
+                dt.columns.adjust().draw(false);
+            });
+        });
+
         // Attach file to confirm form
         try {
-            var dt = new DataTransfer();
-            dt.items.add(selectedFile);
-            confirmFileInput.files = dt.files;
+            var dt2 = new DataTransfer();
+            dt2.items.add(selectedFile);
+            confirmFileInput.files = dt2.files;
         } catch (e) { /* browser may not support DataTransfer constructor */ }
     }
 
@@ -638,8 +714,8 @@ document.addEventListener('DOMContentLoaded', function () {
         /* Show import overlay */
         overlayImport.classList.remove('d-none');
         importOverlayIcon.className = 'bi bi-database-up overlay-icon';
-        importOverlayTitle.textContent = 'Saving to Database';
-        setProgress(0, 'Uploading file...');
+        importOverlayTitle.textContent = __t.ovl_save_title;
+        setProgress(0, __t.ovl_save_uploading);
 
         var formData = new FormData(confirmForm);
 
@@ -649,26 +725,26 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.upload.addEventListener('progress', function (e) {
             if (e.lengthComputable) {
                 var pct = Math.round((e.loaded / e.total) * 70);
-                setProgress(pct, pct < 70 ? 'Uploading file...' : 'Processing data...');
+                setProgress(pct, pct < 70 ? __t.ovl_save_uploading : __t.ovl_save_processing);
             }
         });
 
         xhr.upload.addEventListener('load', function () {
             /* Upload done — now server is processing. Animate 70 → 95% slowly. */
-            setProgress(70, 'Processing data...');
+            setProgress(70, __t.ovl_save_processing);
             var current = 70;
             var timer = setInterval(function () {
                 current += Math.random() * 3;
                 if (current >= 95) { current = 95; clearInterval(timer); }
-                setProgress(Math.round(current), 'Processing data...');
+                setProgress(Math.round(current), __t.ovl_save_processing);
             }, 300);
 
             xhr.addEventListener('load', function () {
                 clearInterval(timer);
-                setProgress(100, 'Import complete!');
+                setProgress(100, __t.ovl_save_complete);
                 progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
                 progressBar.classList.add('bg-success');
-                importOverlayTitle.textContent = 'All Done!';
+                importOverlayTitle.textContent = __t.ovl_save_done;
                 importOverlayIcon.className = 'bi bi-check-circle-fill overlay-icon success';
 
                 try {
@@ -680,14 +756,14 @@ document.addEventListener('DOMContentLoaded', function () {
                             renderResults(data);
                         }, 900);
                     } else {
-                        var msg = (data && data.message) ? data.message : 'Server returned an error. Please try again.';
+                        var msg = (data && data.message) ? data.message : __t.ovl_err_server;
                         overlayImport.classList.add('d-none');
                         alert(msg);
                         resetConfirmBtn();
                     }
                 } catch (ex) {
                     overlayImport.classList.add('d-none');
-                    alert('Unexpected response from server. Please try again.');
+                    alert(__t.ovl_err_response);
                     resetConfirmBtn();
                 }
             });
@@ -695,7 +771,7 @@ document.addEventListener('DOMContentLoaded', function () {
             xhr.addEventListener('error', function () {
                 clearInterval(timer);
                 overlayImport.classList.add('d-none');
-                alert('Network error during import. Please try again.');
+                alert(__t.ovl_err_network);
                 resetConfirmBtn();
             });
         });
